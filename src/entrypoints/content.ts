@@ -59,7 +59,20 @@ export default defineContentScript({
     function createFloatingButton() {
       if (fab) return;
       fab = document.createElement('button');
-      fab.innerHTML = '&lt; / &gt;';
+      fab.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="28" height="28">
+  <rect width="128" height="128" rx="28" fill="#111111" />
+  <rect x="24" y="20" width="80" height="88" rx="8" fill="none" stroke="#3B3B3B" stroke-width="4" />
+  <line x1="64" y1="28" x2="64" y2="100" stroke="#7DD3FC" stroke-width="3" stroke-linecap="round" opacity="0.4" />
+  <line x1="36" y1="36" x2="72" y2="36" stroke="#7DD3FC" stroke-width="5" stroke-linecap="round" />
+  <line x1="36" y1="50" x2="92" y2="50" stroke="#A78BFA" stroke-width="5" stroke-linecap="round" />
+  <line x1="36" y1="64" x2="60" y2="64" stroke="#F9A8D4" stroke-width="5" stroke-linecap="round" />
+  <line x1="36" y1="78" x2="80" y2="78" stroke="#A78BFA" stroke-width="5" stroke-linecap="round" />
+  <line x1="36" y1="92" x2="56" y2="92" stroke="#6EE7B7" stroke-width="5" stroke-linecap="round" />
+  <polyline points="16,32 16,16 32,16" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="0.5" />
+  <polyline points="96,16 112,16 112,32" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="0.5" />
+  <polyline points="16,96 16,112 32,112" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="0.5" />
+  <polyline points="96,112 112,112 112,96" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="0.5" />
+</svg>`;
       fab.style.position = 'fixed';
       fab.style.bottom = '20px';
       fab.style.right = '20px';

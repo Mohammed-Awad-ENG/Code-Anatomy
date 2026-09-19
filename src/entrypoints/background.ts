@@ -24,10 +24,12 @@ export default defineBackground(() => {
     }
   });
 
-  // Note: we removed activating picker on extension icon click 
-  // as per the user request. The icon click is just ignored, 
-  // or it will open the side panel depending on browser behavior.
-
+  // Handle extension icon click → activate picker on the active tab
+  browser.action.onClicked.addListener(async (tab) => {
+    if (tab?.id) {
+      browser.tabs.sendMessage(tab.id, { type: 'ACTIVATE_PICKER' }).catch(() => {});
+    }
+  });
   let lastSelectedElement: any = null;
 
   browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {

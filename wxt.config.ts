@@ -6,7 +6,19 @@ export default defineConfig({
     name: 'Code Anatomy',
     description: 'Select any element to inspect its HTML, CSS, events, and get an AI-powered explanation.',
     permissions: ['sidePanel', 'storage', 'activeTab', 'scripting', 'contextMenus'],
-    action: {},
+    icons: {
+      16: '/icon-16.png',
+      32: '/icon-32.png',
+      48: '/icon-48.png',
+      128: '/icon-128.png',
+    },
+    action: {
+      default_icon: {
+        16: '/icon-16.png',
+        32: '/icon-32.png',
+        48: '/icon-48.png',
+      },
+    },
     commands: {
       'activate-picker': {
         suggested_key: {
