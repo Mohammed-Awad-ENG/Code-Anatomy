@@ -3,7 +3,8 @@ export type AnatomyMessage =
   | { type: 'DEACTIVATE_PICKER' }
   | { type: 'OPEN_PANEL' }
   | { type: 'INSPECT_CONTEXT_ELEMENT' }
-  | { type: 'ELEMENT_SELECTED'; payload: ElementData };
+  | { type: 'ELEMENT_SELECTED'; payload: ElementData }
+  | { type: 'FORCE_STATE'; payload: { state: string; mode: 'once' | 'toggle' } };
 
 export interface ElementData {
   tagName: string;
@@ -14,6 +15,7 @@ export interface ElementData {
   inlineStyles: string;
   computedStyles: Record<string, string>;
   matchedRules: { selector: string; cssText: string; media?: string }[];
+  pseudoRules: { selector: string; cssText: string; pseudoClass: string; media?: string }[];
   listeners?: any[];
   frameworkEvents?: { event: string; handler: string }[];
 }

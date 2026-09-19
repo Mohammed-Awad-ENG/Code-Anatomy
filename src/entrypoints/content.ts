@@ -12,6 +12,10 @@ export default defineContentScript({
     let hoveredElement: HTMLElement | null = null;
     let lastRightClickedElement: HTMLElement | null = null;
     let fab: HTMLElement | null = null;
+    
+    let lastInspectedElement: HTMLElement | null = null;
+    let forceStyleEl: HTMLStyleElement | null = null;
+    let lastExtractedPseudoRules: { selector: string; cssText: string; pseudoClass: string; media?: string }[] = [];
 
     // Listen for messages from background/sidebar
     browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {
@@ -26,6 +30,21 @@ export default defineContentScript({
           hoveredElement = lastRightClickedElement;
           isActive = true;
           onClick(new MouseEvent('click') as any); // simulate click to open panel and inspect
+        }
+      } else if (msg.type === 'FORCE_STATE' && lastInspectedElement) {
+        const stateName = msg.payload.state.replace(':', '');
+        const attrName = `data-ca-force-${stateName}`;
+        if (msg.payload.mode === 'once') {
+          lastInspectedElement.setAttribute(attrName, 'true');
+          setTimeout(() => {
+            if (lastInspectedElement) lastInspectedElement.removeAttribute(attrName);
+          }, 1000);
+        } else if (msg.payload.mode === 'toggle') {
+          if (lastInspectedElement.hasAttribute(attrName)) {
+            lastInspectedElement.removeAttribute(attrName);
+          } else {
+            lastInspectedElement.setAttribute(attrName, 'true');
+          }
         }
       }
     });
@@ -159,6 +178,7 @@ export default defineContentScript({
       e.stopImmediatePropagation();
       
       const el = hoveredElement;
+      lastInspectedElement = el; // Save reference for forcing states
       deactivatePicker();
       
       // IMPORTANT: Send synchronous message to background script so it can open sidePanel 
@@ -294,33 +314,93 @@ export default defineContentScript({
 
       // 5. Authored Rules
       const matchedRules: { selector: string; cssText: string; media?: string }[] = [];
+      const pseudoRules: { selector: string; cssText: string; pseudoClass: string; media?: string }[] = [];
+      const interactionPseudos = [
+        ':hover', ':focus', ':active', ':focus-within', ':focus-visible', ':target',
+        ':visited', ':checked', ':disabled', ':enabled', ':read-only', ':read-write',
+        ':valid', ':invalid', ':in-range', ':out-of-range', ':required', ':optional'
+      ];
+
+      function processRule(rule: CSSStyleRule, mediaText?: string) {
+        // Safe split by comma, ignoring commas inside parentheses
+        const selectors: string[] = [];
+        let current = '';
+        let depth = 0;
+        for (let i = 0; i < rule.selectorText.length; i++) {
+          const char = rule.selectorText[i];
+          if (char === '(') depth++;
+          else if (char === ')') depth--;
+          else if (char === ',' && depth === 0) {
+            selectors.push(current.trim());
+            current = '';
+            continue;
+          }
+          current += char;
+        }
+        if (current) selectors.push(current.trim());
+
+        for (const selector of selectors) {
+          let isPseudo = false;
+          let detectedPseudos: string[] = [];
+          let baseSelector = selector;
+
+          // Strip all interaction pseudo-classes
+          for (const pseudo of interactionPseudos) {
+            if (baseSelector.includes(pseudo)) {
+              isPseudo = true;
+              detectedPseudos.push(pseudo);
+              baseSelector = baseSelector.replace(new RegExp(pseudo, 'g'), '');
+            }
+          }
+          
+          // Strip ALL pseudo-elements (both :: and legacy : variants)
+          // This prevents DOMExceptions in matches()
+          baseSelector = baseSelector
+            .replace(/::[a-zA-Z0-9_-]+/g, '')
+            .replace(/:(before|after|first-letter|first-line)\b/g, '')
+            .replace(/:-webkit-[a-zA-Z0-9_-]+/g, '')
+            .replace(/:-moz-[a-zA-Z0-9_-]+/g, '')
+            .replace(/:-ms-[a-zA-Z0-9_-]+/g, '')
+            .replace(/:-o-[a-zA-Z0-9_-]+/g, '');
+
+          if (!baseSelector || baseSelector === '*') {
+             if (!baseSelector) continue;
+          }
+
+          try {
+            if (el.matches(baseSelector)) {
+              if (isPseudo) {
+                pseudoRules.push({
+                  selector: selector, // Use the specific comma-part selector
+                  cssText: rule.style.cssText,
+                  pseudoClass: detectedPseudos.join(' '), // If multiple, space-separated
+                  media: mediaText
+                });
+              } else {
+                matchedRules.push({
+                  selector: selector,
+                  cssText: rule.style.cssText,
+                  media: mediaText
+                });
+              }
+            }
+          } catch (e) {
+            // Silently ignore if matches() fails on a complex unstripped selector
+          }
+        }
+      }
+
       try {
         for (const sheet of document.styleSheets) {
           try {
             if (!sheet.cssRules) continue;
             for (const rule of sheet.cssRules) {
               if (rule instanceof CSSStyleRule) {
-                try {
-                  if (el.matches(rule.selectorText)) {
-                    matchedRules.push({
-                      selector: rule.selectorText,
-                      cssText: rule.style.cssText
-                    });
-                  }
-                } catch (e) {}
+                processRule(rule);
               } else if (rule instanceof CSSMediaRule) {
-                // handle media queries
                 for (const mediaSubRule of rule.cssRules) {
                   if (mediaSubRule instanceof CSSStyleRule) {
-                    try {
-                      if (el.matches(mediaSubRule.selectorText)) {
-                        matchedRules.push({
-                          selector: mediaSubRule.selectorText,
-                          cssText: mediaSubRule.style.cssText,
-                          media: rule.media.mediaText
-                        });
-                      }
-                    } catch (e) {}
+                    processRule(mediaSubRule, rule.media.mediaText);
                   }
                 }
               }
@@ -332,6 +412,28 @@ export default defineContentScript({
       } catch (e) {
         // Handle gracefully
       }
+
+      // Generate force styles dynamically
+      lastExtractedPseudoRules = pseudoRules;
+      if (!forceStyleEl) {
+        forceStyleEl = document.createElement('style');
+        forceStyleEl.id = 'code-anatomy-force-styles';
+        document.head.appendChild(forceStyleEl);
+      }
+      
+      const uniqueId = el.dataset.caId || `ca-${Math.random().toString(36).substr(2, 9)}`;
+      el.dataset.caId = uniqueId;
+      
+      let fullInjectedCSS = '';
+      for (const rule of pseudoRules) {
+        let pseudoElement = '';
+        const peMatch = rule.selector.match(/::[a-zA-Z0-9_-]+/);
+        if (peMatch) pseudoElement = peMatch[0];
+        
+        const stateName = rule.pseudoClass.replace(':', '');
+        fullInjectedCSS += `[data-ca-force-${stateName}="true"][data-ca-id="${uniqueId}"]${pseudoElement} { ${rule.cssText} !important; }\n`;
+      }
+      forceStyleEl.textContent = fullInjectedCSS;
 
       // 6. Framework Events (React)
       const frameworkEvents: { event: string; handler: string }[] = [];
@@ -361,6 +463,7 @@ export default defineContentScript({
         inlineStyles: el.style.cssText,
         computedStyles,
         matchedRules,
+        pseudoRules,
         frameworkEvents
       };
     }
