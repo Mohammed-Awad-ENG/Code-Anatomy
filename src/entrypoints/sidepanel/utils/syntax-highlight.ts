@@ -31,5 +31,8 @@ export function highlightCSS(css: string): string {
   // Properties and values
   highlighted = highlighted.replace(/([a-zA-Z0-9\-]+)(\s*:)/g, '<span class="syntax-prop">$1</span>$2');
   
+  // Comments (e.g. /* Utility class */)
+  highlighted = highlighted.replace(/(\/\*[\s\S]*?\*\/)/g, '<span style="color: var(--text-secondary)">$1</span>');
+  
   return highlighted;
 }
