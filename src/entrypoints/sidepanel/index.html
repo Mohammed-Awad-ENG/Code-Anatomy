@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Code Anatomy</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="element-header">
+        <span class="anatomy-pulse"></span>
+        <h1 id="selected-element-name">Select an Element</h1>
+      </div>
+      <div class="element-attrs" id="selected-element-attrs">
+        <!-- Attributes will go here -->
+      </div>
+    </header>
+
+
+
+    <main class="tab-content stacked-layout">
+      <section id="html-panel" class="panel">
+        <h2 class="section-header">HTML</h2>
+        <div class="panel-body">
+          <p class="empty-state">Waiting for selection...</p>
+        </div>
+      </section>
+
+      <section id="css-panel" class="panel">
+        <h2 class="section-header">CSS</h2>
+        <div class="panel-body">
+          <p class="empty-state">Waiting for selection...</p>
+        </div>
+      </section>
+
+      <section id="events-panel" class="panel">
+        <h2 class="section-header">Events</h2>
+        <div class="panel-body">
+          <p class="empty-state">Waiting for selection...</p>
+        </div>
+      </section>
+
+      <section id="ai-panel" class="panel">
+        <h2 class="section-header">AI ✦</h2>
+        <div class="panel-body">
+          <p class="empty-state">Waiting for selection...</p>
+          <div class="ai-controls hidden">
+            <button id="generate-summary-btn" class="btn-primary">Generate Summary</button>
+            <div id="ai-result" class="markdown-body mt-4"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <button id="settings-btn" class="icon-btn" title="Settings">⚙️ Settings</button>
+    </footer>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal hidden">
+      <div class="modal-content">
+        <h2>Settings</h2>
+        
+        <div class="setting-group" style="margin-bottom: 20px;">
+          <label for="gemini-api-key">Google Gemini API Key</label>
+          <input type="password" id="gemini-api-key" placeholder="AIzaSy..." />
+          <p class="help-text" style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">Get a free key from <a href="https://aistudio.google.com/" target="_blank" style="color: var(--accent);">Google AI Studio</a>.</p>
+        </div>
+
+        <div class="setting-group" style="margin-bottom: 20px; display: flex; align-items: center; gap: 12px;">
+          <input type="checkbox" id="show-fab-toggle" style="width: 16px; height: 16px; accent-color: var(--accent);" />
+          <label for="show-fab-toggle" style="margin: 0; cursor: pointer;">Show Floating Button on Webpages</label>
+        </div>
+
+        <div class="modal-actions">
+          <button id="save-settings-btn" class="btn-primary">Save</button>
+          <button id="close-settings-btn" class="btn-secondary">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
