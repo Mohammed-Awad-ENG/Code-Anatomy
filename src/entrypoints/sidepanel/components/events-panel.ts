@@ -39,7 +39,7 @@ export function renderEventsPanel(data: ElementData, listeners: any[]) {
       const header = document.createElement('div');
       header.style.fontWeight = 'bold';
       header.style.marginBottom = '8px';
-      header.style.color = 'var(--syntax-tag)';
+      header.style.color = 'var(--syntax-func)';
       header.textContent = evt.event;
       
       const code = document.createElement('pre');

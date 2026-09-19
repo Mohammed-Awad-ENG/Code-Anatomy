@@ -27,12 +27,22 @@ export function renderCssPanel(data: ElementData) {
       let formattedCss = innerCss
         .split(';')
         .map(line => line.trim())
-        .filter(line => line.length > 0)
+        .filter(line => {
+          if (line.length === 0) return false;
+          // Filter out properties with empty values (e.g. "--tw-pan-x:")
+          const parts = line.split(':');
+          if (parts.length >= 2) {
+             const value = parts.slice(1).join(':').trim();
+             return value.length > 0;
+          }
+          return true;
+        })
         .join(';\n  ');
       
-      if (formattedCss.length > 0) {
-        formattedCss += ';';
+      if (formattedCss.length === 0) {
+        return; // Skip this rule entirely if it has no meaningful properties
       }
+      formattedCss += ';';
 
       // Check if selector contains framework classes to inject comment
       // Extract class names from selector e.g. ".gap-2:hover" -> ["gap-2", "hover"]
@@ -53,7 +63,7 @@ export function renderCssPanel(data: ElementData) {
       html += `
         <div style="margin-bottom: 16px; background: var(--bg-secondary); border-radius: 4px; padding: 12px; border: 1px solid var(--border);">
           ${mediaText}
-          <div style="color: var(--syntax-attr); font-family: var(--font-mono); font-size: 12px; margin-bottom: 8px;">${rule.selector}</div>
+          <div style="color: var(--syntax-selector); font-family: var(--font-mono); font-size: 12px; margin-bottom: 8px;">${rule.selector}</div>
           <div class="code-block">
             <pre style="margin: 0; padding: 8px; font-size: 11px; background: var(--bg-tertiary); border-radius: 4px; color: var(--text-primary);"><code>${finalCssCode}</code></pre>
           </div>

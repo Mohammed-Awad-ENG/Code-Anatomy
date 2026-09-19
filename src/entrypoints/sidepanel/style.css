@@ -1,20 +1,24 @@
 /* Design System / CSS Tokens */
 :root {
-  --bg-primary: #121212;
-  --bg-secondary: #1E1E1E;
-  --bg-tertiary: #2A2A2A;
-  --border: #333333;
-  --text-primary: #E0E0E0;
-  --text-secondary: #888888;
-  --accent: #6EC1E4;
+  --bg-primary: #181818;
+  --bg-secondary: #1F1F1F;
+  --bg-tertiary: #181818;
+  --border: #2B2B2B;
+  --text-primary: #CCCCCC;
+  --text-secondary: #9D9D9D;
+  --accent: #0078D4;
   
-  --syntax-tag: #E06C75;
-  --syntax-attr: #D19A66;
-  --syntax-value: #98C379;
-  --syntax-prop: #56B6C2;
+  /* VS Code Syntax Highlighting (Dark Modern) */
+  --syntax-tag: #569CD6;
+  --syntax-attr: #9CDCFE;
+  --syntax-value: #CE9178;
+  --syntax-prop: #9CDCFE;
+  --syntax-comment: #6A9955;
+  --syntax-selector: #D7BA7D;
+  --syntax-func: #DCDCAA;
   
-  --font-mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
-  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Consolas', 'Courier New', monospace;
+  --font-body: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 * {
@@ -211,18 +215,18 @@ body {
   font-size: 16px;
 }
 
-.form-group {
+.setting-group {
   margin-bottom: 16px;
 }
 
-.form-group label {
+.setting-group label {
   display: block;
   margin-bottom: 8px;
   color: var(--text-secondary);
   font-size: 12px;
 }
 
-.form-group input {
+.setting-group input {
   width: 100%;
   padding: 8px;
   background-color: var(--bg-primary);
@@ -278,3 +282,12 @@ body {
   color: var(--text-primary);
   border: 1px solid var(--border);
 }
+
+/* Syntax Highlighting Classes */
+.syntax-tag { color: var(--syntax-tag); }
+.syntax-attr { color: var(--syntax-attr); }
+.syntax-value { color: var(--syntax-value); }
+.syntax-prop { color: var(--syntax-prop); }
+.syntax-func { color: var(--syntax-func); }
+.syntax-selector { color: var(--syntax-selector); }
+.syntax-comment { color: var(--syntax-comment); }
