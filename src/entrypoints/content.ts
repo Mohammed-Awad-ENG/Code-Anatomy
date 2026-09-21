@@ -12,10 +12,14 @@ export default defineContentScript({
     let hoveredElement: HTMLElement | null = null;
     let lastRightClickedElement: HTMLElement | null = null;
     let fab: HTMLElement | null = null;
+    let iframeTooltip: HTMLElement | null = null;
     
     let lastInspectedElement: HTMLElement | null = null;
     let forceStyleEl: HTMLStyleElement | null = null;
     let lastExtractedPseudoRules: { selector: string; cssText: string; pseudoClass: string; media?: string }[] = [];
+    
+    // Track iframe inspection state
+    let activeIframeDoc: Document | null = null;
 
     // Listen for messages from background/sidebar
     browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {
@@ -161,10 +165,30 @@ export default defineContentScript({
 
     function onMouseOver(e: MouseEvent) {
       if (!isActive) return;
-      const target = e.target as HTMLElement;
+      let target = e.target as HTMLElement;
       
-      // Ignore extension overlay or shadow dom roots if not careful, but we just use target
-      if (target.id === 'code-anatomy-overlay') return;
+      // Ignore extension UI elements
+      if (target.id === 'code-anatomy-overlay' || target.id === 'code-anatomy-iframe-tooltip') return;
+      if (target === fab) return;
+      
+      // Shadow DOM: if we're inside a shadow root, use the composed path to get the actual target
+      if (e.composedPath && e.composedPath().length > 0) {
+        const deepTarget = e.composedPath()[0] as HTMLElement;
+        if (deepTarget && deepTarget !== target && deepTarget instanceof HTMLElement) {
+          target = deepTarget;
+        }
+      }
+      
+      // Iframe awareness: show tooltip for iframes
+      if (target.tagName === 'IFRAME') {
+        const iframe = target as HTMLIFrameElement;
+        showIframeTooltip(iframe);
+        hoveredElement = target;
+        updateOverlay(target);
+        return;
+      } else {
+        hideIframeTooltip();
+      }
       
       hoveredElement = target;
       updateOverlay(target);
@@ -178,6 +202,22 @@ export default defineContentScript({
       e.stopImmediatePropagation();
       
       const el = hoveredElement;
+      
+      // If clicking on a same-origin iframe, drill into it instead of inspecting the iframe element
+      if (el.tagName === 'IFRAME') {
+        const iframe = el as HTMLIFrameElement;
+        try {
+          const iframeDoc = iframe.contentDocument;
+          if (iframeDoc) {
+            hideIframeTooltip();
+            attachIframeListeners(iframeDoc);
+            return; // Stay in picker mode, now listening inside the iframe
+          }
+        } catch (e) {
+          // Cross-origin — fall through and inspect the iframe element itself
+        }
+      }
+      
       lastInspectedElement = el; // Save reference for forcing states
       deactivatePicker();
       
@@ -189,25 +229,28 @@ export default defineContentScript({
       const elementId = Math.random().toString(36).substring(2);
       el.setAttribute('data-code-anatomy-id', elementId);
 
-      // Query events
-      const listeners = await new Promise<any[]>((resolve) => {
+      // Query events & JS references from the injected (MAIN world) script
+      const jsResult = await new Promise<any>((resolve) => {
         const handler = (event: Event) => {
-          const customEvent = event as CustomEvent;
-          if (customEvent.detail.elementId === elementId) {
-            document.removeEventListener('code-anatomy-response-events', handler);
-            resolve(customEvent.detail.listeners);
+          const target = event.target as Element;
+          if (target === el) {
+            el.removeEventListener('code-anatomy-response-events', handler);
+            const responseStr = el.getAttribute('data-code-anatomy-response');
+            if (responseStr) {
+               resolve(JSON.parse(responseStr));
+               el.removeAttribute('data-code-anatomy-response');
+            } else {
+               resolve({ listeners: [], childListeners: [], domAccess: [], domManipulations: [] });
+            }
           }
         };
-        document.addEventListener('code-anatomy-response-events', handler);
-        
-        document.dispatchEvent(new CustomEvent('code-anatomy-query-events', {
-          detail: { elementId }
-        }));
+        el.addEventListener('code-anatomy-response-events', handler);
+        el.dispatchEvent(new CustomEvent('code-anatomy-query-events', { bubbles: true }));
         
         // Fallback timeout in case injected script didn't run
         setTimeout(() => {
-          document.removeEventListener('code-anatomy-response-events', handler);
-          resolve([]);
+          el.removeEventListener('code-anatomy-response-events', handler);
+          resolve({ listeners: [], childListeners: [], domAccess: [], domManipulations: [] });
         }, 500);
       });
 
@@ -220,7 +263,10 @@ export default defineContentScript({
         type: 'ELEMENT_SELECTED',
         payload: {
           ...data,
-          listeners // Attach queried listeners to the payload
+          listeners: jsResult.listeners,
+          childListeners: jsResult.childListeners || [],
+          domAccess: jsResult.domAccess || [],
+          domManipulations: jsResult.domManipulations || []
         }
       });
     }
@@ -228,6 +274,67 @@ export default defineContentScript({
     function onKeyDown(e: KeyboardEvent) {
       if (isActive && e.key === 'Escape') {
         deactivatePicker();
+      }
+    }
+    
+    function showIframeTooltip(iframe: HTMLIFrameElement) {
+      let canAccess = false;
+      try {
+        canAccess = !!iframe.contentDocument;
+      } catch (e) {}
+      
+      if (!iframeTooltip) {
+        iframeTooltip = document.createElement('div');
+        iframeTooltip.id = 'code-anatomy-iframe-tooltip';
+        iframeTooltip.style.position = 'fixed';
+        iframeTooltip.style.padding = '8px 12px';
+        iframeTooltip.style.backgroundColor = '#1e1e1e';
+        iframeTooltip.style.color = '#ccc';
+        iframeTooltip.style.border = '1px solid #333';
+        iframeTooltip.style.borderRadius = '6px';
+        iframeTooltip.style.fontSize = '12px';
+        iframeTooltip.style.fontFamily = 'monospace';
+        iframeTooltip.style.zIndex = '2147483647';
+        iframeTooltip.style.pointerEvents = 'none';
+        iframeTooltip.style.boxShadow = '0 4px 12px rgba(0,0,0,0.4)';
+        document.documentElement.appendChild(iframeTooltip);
+      }
+      
+      const rect = iframe.getBoundingClientRect();
+      iframeTooltip.style.top = `${rect.top + 8}px`;
+      iframeTooltip.style.left = `${rect.left + 8}px`;
+      iframeTooltip.style.display = 'block';
+      
+      if (canAccess) {
+        iframeTooltip.innerHTML = `<span style="color: #6EE7B7;">✓</span> Same-origin iframe — <strong>click to inspect inside</strong>`;
+      } else {
+        iframeTooltip.innerHTML = `<span style="color: #E06C75;">✗</span> Cross-origin iframe — cannot inspect`;
+      }
+    }
+    
+    function hideIframeTooltip() {
+      if (iframeTooltip) {
+        iframeTooltip.style.display = 'none';
+      }
+    }
+    
+    function attachIframeListeners(iframeDoc: Document) {
+      activeIframeDoc = iframeDoc;
+      iframeDoc.addEventListener('mouseover', onMouseOver, true);
+      iframeDoc.addEventListener('click', onClick, true);
+      iframeDoc.addEventListener('keydown', onKeyDown, true);
+      iframeDoc.body.style.cursor = 'crosshair';
+    }
+    
+    function detachIframeListeners() {
+      if (activeIframeDoc) {
+        try {
+          activeIframeDoc.removeEventListener('mouseover', onMouseOver, true);
+          activeIframeDoc.removeEventListener('click', onClick, true);
+          activeIframeDoc.removeEventListener('keydown', onKeyDown, true);
+          activeIframeDoc.body.style.cursor = '';
+        } catch (e) {}
+        activeIframeDoc = null;
       }
     }
 
@@ -254,6 +361,8 @@ export default defineContentScript({
       document.removeEventListener('mouseover', onMouseOver, true);
       document.removeEventListener('click', onClick, true);
       document.removeEventListener('keydown', onKeyDown, true);
+      detachIframeListeners();
+      hideIframeTooltip();
       
       if (overlay) {
         overlay.style.display = 'none';
@@ -349,7 +458,7 @@ export default defineContentScript({
             if (baseSelector.includes(pseudo)) {
               isPseudo = true;
               detectedPseudos.push(pseudo);
-              baseSelector = baseSelector.replace(new RegExp(pseudo, 'g'), '');
+              baseSelector = baseSelector.replace(new RegExp(pseudo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), '');
             }
           }
           
@@ -370,12 +479,16 @@ export default defineContentScript({
           try {
             if (el.matches(baseSelector)) {
               if (isPseudo) {
-                pseudoRules.push({
-                  selector: selector, // Use the specific comma-part selector
-                  cssText: rule.style.cssText,
-                  pseudoClass: detectedPseudos.join(' '), // If multiple, space-separated
-                  media: mediaText
-                });
+                // Emit one pseudoRule per detected state so each state
+                // can be independently toggled without invalid attribute names
+                for (const pseudo of detectedPseudos) {
+                  pseudoRules.push({
+                    selector: selector,
+                    cssText: rule.style.cssText,
+                    pseudoClass: pseudo,
+                    media: mediaText
+                  });
+                }
               } else {
                 matchedRules.push({
                   selector: selector,
@@ -390,27 +503,56 @@ export default defineContentScript({
         }
       }
 
-      try {
-        for (const sheet of document.styleSheets) {
-          try {
-            if (!sheet.cssRules) continue;
-            for (const rule of sheet.cssRules) {
-              if (rule instanceof CSSStyleRule) {
-                processRule(rule);
-              } else if (rule instanceof CSSMediaRule) {
-                for (const mediaSubRule of rule.cssRules) {
-                  if (mediaSubRule instanceof CSSStyleRule) {
-                    processRule(mediaSubRule, rule.media.mediaText);
-                  }
-                }
-              }
-            }
-          } catch (e) {
-            // CORS error on cross-origin stylesheets
+      // Recursively walk CSS rules to handle @media, @supports, @layer, @container, etc.
+      function walkRules(ruleList: CSSRuleList, inheritedMedia?: string) {
+        for (const rule of ruleList) {
+          if (rule instanceof CSSStyleRule) {
+            processRule(rule, inheritedMedia);
+          } else if (rule instanceof CSSMediaRule) {
+            const mediaStr = inheritedMedia
+              ? `${inheritedMedia} and ${rule.media.mediaText}`
+              : rule.media.mediaText;
+            walkRules(rule.cssRules, mediaStr);
+          } else if ('cssRules' in rule && (rule as any).cssRules) {
+            // Handles CSSSupportsRule, CSSLayerBlockRule, CSSContainerRule,
+            // and any other CSSGroupingRule subclass
+            walkRules((rule as any).cssRules, inheritedMedia);
           }
         }
-      } catch (e) {
-        // Handle gracefully
+      }
+
+      function scanStyleSheets(root: Document | ShadowRoot) {
+        try {
+          for (const sheet of root.styleSheets) {
+            try {
+              if (!sheet.cssRules) continue;
+              walkRules(sheet.cssRules);
+            } catch (e) {
+              // CORS error on cross-origin stylesheets
+            }
+          }
+        } catch (e) {}
+        
+        // Also scan adoptedStyleSheets (used by shadow DOM and modern documents)
+        if ('adoptedStyleSheets' in root) {
+          try {
+            for (const sheet of (root as any).adoptedStyleSheets) {
+              try {
+                if (!sheet.cssRules) continue;
+                walkRules(sheet.cssRules);
+              } catch (e) {}
+            }
+          } catch (e) {}
+        }
+      }
+      
+      // Scan the main document
+      scanStyleSheets(document);
+      
+      // If the element lives inside a shadow root, also scan its shadow stylesheets
+      const rootNode = el.getRootNode();
+      if (rootNode instanceof ShadowRoot) {
+        scanStyleSheets(rootNode);
       }
 
       // Generate force styles dynamically
@@ -430,7 +572,8 @@ export default defineContentScript({
         const peMatch = rule.selector.match(/::[a-zA-Z0-9_-]+/);
         if (peMatch) pseudoElement = peMatch[0];
         
-        const stateName = rule.pseudoClass.replace(':', '');
+        // pseudoClass is now always a single state like ":hover" (no spaces)
+        const stateName = rule.pseudoClass.replace(/^:/, '');
         fullInjectedCSS += `[data-ca-force-${stateName}="true"][data-ca-id="${uniqueId}"]${pseudoElement} { ${rule.cssText} !important; }\n`;
       }
       forceStyleEl.textContent = fullInjectedCSS;

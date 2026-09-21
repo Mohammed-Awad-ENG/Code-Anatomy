@@ -6,6 +6,7 @@ export default defineConfig({
     name: 'Code Anatomy',
     description: 'Select any element to inspect its HTML, CSS, events, and get an AI-powered explanation.',
     permissions: ['sidePanel', 'storage', 'activeTab', 'scripting', 'contextMenus'],
+    host_permissions: ['https://generativelanguage.googleapis.com/*'],
     icons: {
       16: '/icon-16.png',
       32: '/icon-32.png',

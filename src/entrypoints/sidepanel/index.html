@@ -35,7 +35,7 @@
       </section>
 
       <section id="events-panel" class="panel">
-        <h2 class="section-header">Events</h2>
+        <h2 class="section-header">JavaScript</h2>
         <div class="panel-body">
           <p class="empty-state">Waiting for selection...</p>
         </div>
@@ -48,6 +48,10 @@
           <div class="ai-controls hidden">
             <button id="generate-summary-btn" class="btn-primary">Generate Summary</button>
             <div id="ai-result" class="markdown-body mt-4"></div>
+            <div id="ai-chat-controls" class="hidden mt-4" style="display: flex; gap: 8px; align-items: center;">
+              <input type="text" id="ai-chat-input" placeholder="Ask a follow-up question..." style="flex: 1; padding: 8px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary);" />
+              <button id="ai-chat-submit-btn" class="btn-primary">Ask</button>
+            </div>
           </div>
         </div>
       </section>
