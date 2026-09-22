@@ -291,3 +291,64 @@ body {
 .syntax-func { color: var(--syntax-func); }
 .syntax-selector { color: var(--syntax-selector); }
 .syntax-comment { color: var(--syntax-comment); }
+
+/* JavaScript Syntax Highlighting Tokens */
+.syntax-js-keyword { color: #569CD6; }
+.syntax-js-string { color: #CE9178; }
+.syntax-js-method { color: #DCDCAA; }
+.syntax-js-number { color: #B5CEA8; }
+.syntax-js-comment { color: #6A9955; font-style: italic; }
+
+/* DOM Access Scope UI */
+.dom-access-code-block {
+  font-size: 11px;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  background: var(--bg-tertiary);
+  padding: 8px;
+  border-radius: 4px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 0;
+  border: 1px solid var(--border);
+}
+
+.scope-toggle-btn {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: #6EE7B7;
+  background: transparent;
+  border: 1px solid rgba(110, 231, 183, 0.25);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.scope-toggle-btn:hover {
+  background: rgba(110, 231, 183, 0.08);
+  border-color: rgba(110, 231, 183, 0.45);
+}
+
+.scope-body {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border);
+}
+
+.dom-access-scope-block {
+  font-size: 11px;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  background: #141414;
+  padding: 10px;
+  border-radius: 4px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 0;
+  border: 1px solid rgba(110, 231, 183, 0.15);
+  max-height: 300px;
+  overflow-y: auto;
+  line-height: 1.5;
+}

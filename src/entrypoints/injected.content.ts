@@ -125,6 +125,7 @@ export default defineContentScript({
             method: string;
             argument: string;
             callerLocation: string;
+            callerScope: string;
             element: Element | null;
             elements?: Element[];
             timestamp: number;
@@ -132,10 +133,50 @@ export default defineContentScript({
         const domAccessLog: DomAccessRecord[] = [];
         (window as any).__CODE_ANATOMY_DOM_ACCESS__ = domAccessLog;
 
+        /**
+         * Attempt to capture the source code of the function that called
+         * the DOM access method.  We walk up the deprecated .caller chain
+         * (works in non-strict, non-module scripts) to find the first
+         * function that is NOT one of our own patched methods.
+         *
+         * Returns:
+         *   - The full function source if we can obtain it
+         *   - "" (empty string) when running in strict-mode / ESM or
+         *     when the caller chain is unavailable
+         */
+        function getCallerScope(patchFn: Function): string {
+            try {
+                // Walk up the .caller chain, skipping our own patch wrapper
+                let fn: Function | null = patchFn;
+                // Safety limit to avoid infinite loops
+                for (let i = 0; i < 15 && fn; i++) {
+                    fn = (fn as any).caller;
+                    if (!fn) break;
+                    const src = fn.toString();
+                    // Skip our own internal helpers
+                    if (
+                        src.includes("logDomAccess") ||
+                        src.includes("__CODE_ANATOMY")
+                    ) {
+                        continue;
+                    }
+                    // Cap at a reasonable size for display
+                    if (src.length > 2000) {
+                        return src.substring(0, 2000) + "\n// ... (truncated)";
+                    }
+                    return src;
+                }
+            } catch (_e) {
+                // Strict mode or CSP — caller is not accessible
+            }
+            return "";
+        }
+
         function logDomAccess(
             method: string,
             argument: string,
             result: Element | null | NodeList | HTMLCollection,
+            patchFn: Function,
         ) {
             if (domAccessLog.length >= MAX_RECORDS) return;
             const caller = getCallerLocation();
@@ -143,10 +184,13 @@ export default defineContentScript({
             if (caller.includes("injected.js") || caller.includes("content.js"))
                 return;
 
+            const callerScope = getCallerScope(patchFn);
+
             const record: DomAccessRecord = {
                 method,
                 argument,
                 callerLocation: caller,
+                callerScope,
                 element: null,
                 timestamp: performance.now(),
             };
@@ -166,66 +210,74 @@ export default defineContentScript({
 
         // Patch document.querySelector
         const origQS = Document.prototype.querySelector;
-        Document.prototype.querySelector = function (selector: string) {
+        const patchedQS = function (selector: string) {
             const result = origQS.call(this, selector);
-            logDomAccess("document.querySelector", selector, result);
+            logDomAccess("document.querySelector", selector, result, patchedQS);
             return result;
         };
+        Document.prototype.querySelector = patchedQS as any;
 
         // Patch document.querySelectorAll
         const origQSA = Document.prototype.querySelectorAll;
-        Document.prototype.querySelectorAll = function (selector: string) {
+        const patchedQSA = function (selector: string) {
             const result = origQSA.call(this, selector);
-            logDomAccess("document.querySelectorAll", selector, result);
+            logDomAccess("document.querySelectorAll", selector, result, patchedQSA);
             return result;
         };
+        Document.prototype.querySelectorAll = patchedQSA as any;
 
         // Patch document.getElementById
         const origById = Document.prototype.getElementById;
-        Document.prototype.getElementById = function (id: string) {
+        const patchedById = function (id: string) {
             const result = origById.call(this, id);
-            logDomAccess("document.getElementById", id, result);
+            logDomAccess("document.getElementById", id, result, patchedById);
             return result;
         };
+        Document.prototype.getElementById = patchedById as any;
 
         // Patch document.getElementsByClassName
         const origByCN = Document.prototype.getElementsByClassName;
-        Document.prototype.getElementsByClassName = function (names: string) {
+        const patchedByCN = function (names: string) {
             const result = origByCN.call(this, names);
-            logDomAccess("document.getElementsByClassName", names, result);
+            logDomAccess("document.getElementsByClassName", names, result, patchedByCN);
             return result;
         };
+        Document.prototype.getElementsByClassName = patchedByCN as any;
 
         // Patch document.getElementsByTagName
         const origByTN = Document.prototype.getElementsByTagName;
-        Document.prototype.getElementsByTagName = function (name: string) {
+        const patchedByTN = function (name: string) {
             const result = origByTN.call(this, name);
-            logDomAccess("document.getElementsByTagName", name, result);
+            logDomAccess("document.getElementsByTagName", name, result, patchedByTN);
             return result;
         };
+        Document.prototype.getElementsByTagName = patchedByTN as any;
 
         // Patch document.getElementsByName
         const origByName = Document.prototype.getElementsByName;
-        Document.prototype.getElementsByName = function (name: string) {
+        const patchedByName = function (name: string) {
             const result = origByName.call(this, name);
-            logDomAccess("document.getElementsByName", name, result);
+            logDomAccess("document.getElementsByName", name, result, patchedByName);
             return result;
         };
+        Document.prototype.getElementsByName = patchedByName as any;
 
         // Patch Element.prototype.querySelector / querySelectorAll (scoped queries)
         const origElemQS = Element.prototype.querySelector;
-        Element.prototype.querySelector = function (selector: string) {
+        const patchedElemQS = function (selector: string) {
             const result = origElemQS.call(this, selector);
-            logDomAccess("element.querySelector", selector, result);
+            logDomAccess("element.querySelector", selector, result, patchedElemQS);
             return result;
         };
+        Element.prototype.querySelector = patchedElemQS as any;
 
         const origElemQSA = Element.prototype.querySelectorAll;
-        Element.prototype.querySelectorAll = function (selector: string) {
+        const patchedElemQSA = function (selector: string) {
             const result = origElemQSA.call(this, selector);
-            logDomAccess("element.querySelectorAll", selector, result);
+            logDomAccess("element.querySelectorAll", selector, result, patchedElemQSA);
             return result;
         };
+        Element.prototype.querySelectorAll = patchedElemQSA as any;
 
         // ═══════════════════════════════════════════════════════
         // 3. DOM MANIPULATION TRACKING
@@ -396,6 +448,7 @@ export default defineContentScript({
                         method: record.method,
                         argument: record.argument,
                         callerLocation: record.callerLocation,
+                        callerScope: record.callerScope || "",
                         targetLabel: matchLabel,
                         targetDepth: matchDepth,
                     });
