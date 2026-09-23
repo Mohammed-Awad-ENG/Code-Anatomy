@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="80" height="80">
+  <defs>
+    <!-- Background Gradient -->
+    <radialGradient id="bg-grad-1" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#181822" />
+      <stop offset="100%" stop-color="#0d0d12" />
+    </radialGradient>
+
+    <!-- Cyan Glow Filter -->
+    <filter id="glow-cyan" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="2.5" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <radialGradient id="ambient-cyan" cx="45%" cy="45%" r="50%">
+      <stop offset="0%" stop-color="#7DD3FC" stop-opacity="0.25" />
+      <stop offset="100%" stop-color="#7DD3FC" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  <!-- Dark Background Circle -->
+  <circle cx="40" cy="40" r="38" fill="url(#bg-grad-1)" stroke="#2B2B36" stroke-width="1.5" />
+  <circle cx="40" cy="40" r="38" fill="url(#ambient-cyan)" />
+
+  <!-- Inspector Element Selection Box (DevTools inspect style) -->
+  <rect x="18" y="20" width="44" height="32" rx="4" fill="#7DD3FC" fill-opacity="0.06" stroke="#7DD3FC" stroke-width="1.2" stroke-dasharray="3 2" opacity="0.6" />
+
+  <!-- Code Bracket Element inside the selection -->
+  <g stroke="#7DD3FC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.85">
+    <!-- Left Bracket < -->
+    <polyline points="29,31 24,36 29,41" />
+    <!-- Right Bracket > -->
+    <polyline points="37,31 42,36 37,41" />
+  </g>
+
+  <!-- Mini Tag Dot -->
+  <circle cx="48" cy="36" r="1.5" fill="#7DD3FC" opacity="0.7" />
+  <circle cx="53" cy="36" r="1.5" fill="#7DD3FC" opacity="0.5" />
+
+  <!-- Click Ripples / Pulse waves around click point (36, 36) -->
+  <circle cx="36" cy="36" r="6" fill="none" stroke="#7DD3FC" stroke-width="1.5" opacity="0.8" />
+  <circle cx="36" cy="36" r="12" fill="none" stroke="#7DD3FC" stroke-width="1" stroke-dasharray="2 3" opacity="0.4" />
+
+  <!-- Mouse Cursor Pointer Clicking the Element -->
+  <g filter="url(#glow-cyan)" transform="translate(36, 36)">
+    <!-- Cursor Shadow -->
+    <path d="M 0 0 L 0 17 L 4.5 13 L 8.5 21 L 11.5 19.5 L 7.5 11.5 L 13 11.5 Z" 
+          fill="#0a0a0f" opacity="0.6" transform="translate(1, 1)" />
+    <!-- Cursor Body -->
+    <path d="M 0 0 L 0 17 L 4.5 13 L 8.5 21 L 11.5 19.5 L 7.5 11.5 L 13 11.5 Z" 
+          fill="#7DD3FC" stroke="#FFFFFF" stroke-width="1" stroke-linejoin="round" />
+  </g>
+
+  <!-- Step Number Badge (Subtle top-right or corner) -->
+  <circle cx="64" cy="18" r="9" fill="#12121a" stroke="#7DD3FC" stroke-width="1" />
+  <text x="64" y="21.5" fill="#7DD3FC" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="10" font-weight="700" text-anchor="middle">1</text>
+</svg>

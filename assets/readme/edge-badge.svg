@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 50" width="200" height="50">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="badge-bg-edge" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#14151b" />
+      <stop offset="100%" stop-color="#1c1d26" />
+    </linearGradient>
+
+    <!-- Edge Top Wave Gradient (Cyan to Blue) -->
+    <linearGradient id="edge-top" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00C8FF" />
+      <stop offset="60%" stop-color="#0078D4" />
+      <stop offset="100%" stop-color="#004578" />
+    </linearGradient>
+
+    <!-- Edge Bottom Wave Gradient (Green to Teal to Blue) -->
+    <linearGradient id="edge-bottom" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#107C41" />
+      <stop offset="40%" stop-color="#00B294" />
+      <stop offset="100%" stop-color="#0078D4" />
+    </linearGradient>
+  </defs>
+
+  <style>
+    .badge-title {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      font-weight: 600;
+      font-size: 14px;
+      letter-spacing: -0.2px;
+    }
+    .badge-sub {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-weight: 500;
+      font-size: 9.5px;
+      letter-spacing: 0.5px;
+    }
+  </style>
+
+  <!-- Badge Pill Container -->
+  <rect x="1" y="1" width="198" height="48" rx="24" fill="url(#badge-bg-edge)" stroke="#333545" stroke-width="1.2" />
+
+  <!-- Subtle Accent Light on Top Border -->
+  <path d="M 25 1 L 175 1" stroke="#00C8FF" stroke-width="1" stroke-opacity="0.3" stroke-linecap="round" />
+
+  <!-- Edge Icon Group (Simplified modern Edge wave) -->
+  <g transform="translate(17, 12)">
+    <!-- Bottom Swirl / Wave -->
+    <path d="M 13 24 
+             C 6.5 24 2 19 2 13 
+             C 2 7 6 3 11 3 
+             C 12.5 3 14 3.5 15.5 4.5 
+             C 13 6 11 9 11 12.5 
+             C 11 17 15 20.5 19.5 20.5 
+             C 20.8 20.5 22 20.1 23 19.5 
+             C 21.5 22.5 17.5 24 13 24 Z" 
+          fill="url(#edge-bottom)" />
+
+    <!-- Top Wave / Crest -->
+    <path d="M 13 2 
+             C 19.5 2 24.5 6.8 24.5 13 
+             C 24.5 15 23.8 17 22.8 18.5 
+             C 21.8 16.5 19 15 16 15 
+             C 11.5 15 8 18.5 8 23 
+             C 8 23.3 8 23.6 8.1 23.9 
+             C 4.5 21.8 3 17 3 13 
+             C 3 6.9 7.5 2 13 2 Z" 
+          fill="url(#edge-top)" />
+
+    <!-- Inner Wave Highlight -->
+    <path d="M 13 2.5 
+             C 18 2.5 22.5 6 23.5 11 
+             C 20 9 16 8.5 13 10 
+             C 11 11 9.5 13 9 15.5 
+             C 9 8 11 2.5 13 2.5 Z" 
+          fill="#80E5FF" opacity="0.6" />
+  </g>
+
+  <!-- Text: Edge & Supported status -->
+  <text x="56" y="24" fill="#FFFFFF" class="badge-title">Edge</text>
+
+  <!-- Status indicator: Verified / Supported -->
+  <circle cx="59" cy="36" r="2.5" fill="#6EE7B7" />
+  <text x="66" y="39.5" fill="#6EE7B7" class="badge-sub">Supported</text>
+
+  <!-- Right Pill Accent Arrow -->
+  <circle cx="178" cy="25" r="9" fill="#222433" />
+  <path d="M 176 21 L 180 25 L 176 29" fill="none" stroke="#00C8FF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+</svg>

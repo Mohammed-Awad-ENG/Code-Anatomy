@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 40" width="800" height="40">
+  <defs>
+    <!-- Center Line Linear Gradient -->
+    <linearGradient id="divider-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#7DD3FC" stop-opacity="0" />
+      <stop offset="15%" stop-color="#7DD3FC" stop-opacity="0.3" />
+      <stop offset="30%" stop-color="#7DD3FC" stop-opacity="0.8" />
+      <stop offset="42%" stop-color="#A78BFA" stop-opacity="0.9" />
+      <stop offset="50%" stop-color="#F9A8D4" stop-opacity="1" />
+      <stop offset="58%" stop-color="#A78BFA" stop-opacity="0.9" />
+      <stop offset="70%" stop-color="#6EE7B7" stop-opacity="0.8" />
+      <stop offset="85%" stop-color="#6EE7B7" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#6EE7B7" stop-opacity="0" />
+    </linearGradient>
+
+    <!-- Center Pulse Glow -->
+    <filter id="divider-glow" x="-20%" y="-100%" width="140%" height="300%">
+      <feGaussianBlur stdDeviation="2.5" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <radialGradient id="node-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#F9A8D4" stop-opacity="0.6" />
+      <stop offset="100%" stop-color="#F9A8D4" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  <!-- Base Muted Guide Line with End Fade -->
+  <line x1="50" y1="20" x2="750" y2="20" stroke="#26262a" stroke-width="1" stroke-dasharray="2 6" />
+
+  <!-- Left Side: Stylized Code Dashes & Dots -->
+  <!-- Outer faint dash -->
+  <line x1="80" y1="20" x2="120" y2="20" stroke="#7DD3FC" stroke-width="2" stroke-linecap="round" opacity="0.25" />
+  
+  <!-- Cyan segment -->
+  <circle cx="140" cy="20" r="2.5" fill="#7DD3FC" opacity="0.5" />
+  <line x1="155" y1="20" x2="205" y2="20" stroke="#7DD3FC" stroke-width="2.5" stroke-linecap="round" opacity="0.65" />
+  <circle cx="220" cy="20" r="2" fill="#7DD3FC" opacity="0.75" />
+  <circle cx="232" cy="20" r="3" fill="#7DD3FC" opacity="0.9" />
+
+  <!-- Purple segment -->
+  <line x1="248" y1="20" x2="288" y2="20" stroke="#A78BFA" stroke-width="3" stroke-linecap="round" opacity="0.85" />
+  <line x1="298" y1="20" x2="312" y2="20" stroke="#A78BFA" stroke-width="2" stroke-linecap="round" opacity="0.7" />
+  <circle cx="324" cy="20" r="2.5" fill="#A78BFA" opacity="0.9" />
+
+  <!-- Pink pre-pulse segment -->
+  <line x1="336" y1="20" x2="352" y2="20" stroke="#F9A8D4" stroke-width="2.5" stroke-linecap="round" />
+
+  <!-- Central EKG / Code Anatomy Heartbeat Pulse -->
+  <g filter="url(#divider-glow)">
+    <!-- Main Pulse Path -->
+    <path d="M 358 20 
+             L 372 20 
+             L 380 24 
+             L 388 8 
+             L 395 32 
+             L 402 12 
+             L 409 25 
+             L 416 18 
+             L 423 20 
+             L 442 20" 
+          fill="none" 
+          stroke="url(#divider-grad)" 
+          stroke-width="2.5" 
+          stroke-linecap="round" 
+          stroke-linejoin="round" />
+
+    <!-- Pulse Apex Nodes -->
+    <circle cx="388" cy="8" r="2.5" fill="#7DD3FC" />
+    <circle cx="395" cy="32" r="2" fill="#F9A8D4" />
+    <circle cx="402" cy="12" r="3" fill="#A78BFA" />
+    <circle cx="409" cy="25" r="2" fill="#6EE7B7" />
+  </g>
+
+  <!-- Ambient Glow behind the main peak -->
+  <circle cx="400" cy="20" r="18" fill="url(#node-glow)" pointer-events="none" />
+
+  <!-- Right Side: Stylized Code Dashes & Dots -->
+  <!-- Pink post-pulse segment -->
+  <line x1="448" y1="20" x2="464" y2="20" stroke="#F9A8D4" stroke-width="2.5" stroke-linecap="round" />
+  <circle cx="476" cy="20" r="2.5" fill="#A78BFA" opacity="0.9" />
+
+  <!-- Purple segment -->
+  <line x1="488" y1="20" x2="502" y2="20" stroke="#A78BFA" stroke-width="2" stroke-linecap="round" opacity="0.7" />
+  <line x1="512" y1="20" x2="552" y2="20" stroke="#A78BFA" stroke-width="3" stroke-linecap="round" opacity="0.85" />
+
+  <!-- Green segment -->
+  <circle cx="568" cy="20" r="3" fill="#6EE7B7" opacity="0.9" />
+  <circle cx="580" cy="20" r="2" fill="#6EE7B7" opacity="0.75" />
+  <line x1="595" y1="20" x2="645" y2="20" stroke="#6EE7B7" stroke-width="2.5" stroke-linecap="round" opacity="0.65" />
+  <circle cx="660" cy="20" r="2.5" fill="#6EE7B7" opacity="0.5" />
+
+  <!-- Outer faint dash -->
+  <line x1="680" y1="20" x2="720" y2="20" stroke="#6EE7B7" stroke-width="2" stroke-linecap="round" opacity="0.25" />
+
+  <!-- Code bracket accents on flanks < and > -->
+  <path d="M 238 15 L 233 20 L 238 25" fill="none" stroke="#7DD3FC" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.6" />
+  <path d="M 562 15 L 567 20 L 562 25" fill="none" stroke="#6EE7B7" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.6" />
+</svg>

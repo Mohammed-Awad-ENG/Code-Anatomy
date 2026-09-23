@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="80" height="80">
+  <defs>
+    <!-- Background Gradient -->
+    <radialGradient id="bg-grad-3" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#141f1a" />
+      <stop offset="100%" stop-color="#0d0d12" />
+    </radialGradient>
+
+    <!-- Green Glow Filter -->
+    <filter id="glow-green" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="2.5" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <radialGradient id="ambient-green" cx="42%" cy="42%" r="50%">
+      <stop offset="0%" stop-color="#6EE7B7" stop-opacity="0.25" />
+      <stop offset="100%" stop-color="#6EE7B7" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  <!-- Dark Background Circle -->
+  <circle cx="40" cy="40" r="38" fill="url(#bg-grad-3)" stroke="#2B2B36" stroke-width="1.5" />
+  <circle cx="40" cy="40" r="38" fill="url(#ambient-green)" />
+
+  <!-- Radiating Insight Rays (Subtle) -->
+  <g stroke="#6EE7B7" stroke-width="1.5" stroke-linecap="round" opacity="0.4">
+    <line x1="38" y1="17" x2="38" y2="13" />
+    <line x1="23" y1="23" x2="19" y2="20" />
+    <line x1="17" y1="38" x2="13" y2="38" />
+  </g>
+
+  <!-- Lightbulb Illustration -->
+  <g filter="url(#glow-green)">
+    <!-- Bulb Glass Fill -->
+    <path d="M 26 38 
+             C 26 30 31.5 24 38 24 
+             C 44.5 24 50 30 50 38 
+             C 50 43 47 46.5 45 49.5 
+             L 45 53 
+             L 31 53 
+             L 31 49.5 
+             C 29 46.5 26 43 26 38 Z" 
+          fill="#6EE7B7" fill-opacity="0.12" 
+          stroke="#6EE7B7" stroke-width="2" stroke-linejoin="round" />
+
+    <!-- AI Filament (Code / Neural Node Bracket Structure) -->
+    <!-- Center node -->
+    <circle cx="38" cy="35" r="2" fill="#6EE7B7" />
+    <!-- Filament loop wires -->
+    <path d="M 33 49 L 33 42 C 33 37 36 35 38 35 C 40 35 43 37 43 42 L 43 49" 
+          fill="none" stroke="#6EE7B7" stroke-width="1.5" stroke-linecap="round" />
+    <line x1="35" y1="41" x2="41" y2="41" stroke="#A78BFA" stroke-width="1.2" stroke-linecap="round" />
+
+    <!-- Bulb Screw Base Threads -->
+    <line x1="33" y1="56" x2="43" y2="56" stroke="#6EE7B7" stroke-width="2" stroke-linecap="round" />
+    <line x1="34" y1="59" x2="42" y2="59" stroke="#6EE7B7" stroke-width="1.8" stroke-linecap="round" opacity="0.85" />
+    <path d="M 36 62 C 36 63.5 40 63.5 40 62" fill="none" stroke="#6EE7B7" stroke-width="2" stroke-linecap="round" />
+
+    <!-- Bulb Glass Glare Highlight -->
+    <path d="M 30 32 C 31 28 34 26 37 26" fill="none" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" opacity="0.6" />
+  </g>
+
+  <!-- Primary AI Sparkle / Star (Gemini 4-Point Star representing AI insight) -->
+  <g filter="url(#glow-green)" transform="translate(54, 25)">
+    <!-- 4-point star path -->
+    <path d="M 0 -11 Q 0 0 11 0 Q 0 0 0 11 Q 0 0 -11 0 Q 0 0 0 -11 Z" 
+          fill="#6EE7B7" stroke="#FFFFFF" stroke-width="0.75" />
+    <circle cx="0" cy="0" r="1.5" fill="#FFFFFF" />
+  </g>
+
+  <!-- Secondary Mini AI Sparkle Star -->
+  <g transform="translate(59, 42)">
+    <path d="M 0 -5 Q 0 0 5 0 Q 0 0 0 5 Q 0 0 -5 0 Q 0 0 0 -5 Z" 
+          fill="#A78BFA" opacity="0.85" />
+  </g>
+
+  <!-- Tiny accent sparkle -->
+  <circle cx="21" cy="46" r="1" fill="#6EE7B7" opacity="0.7" />
+
+  <!-- Step Number Badge -->
+  <circle cx="64" cy="18" r="9" fill="#12121a" stroke="#6EE7B7" stroke-width="1" />
+  <text x="64" y="21.5" fill="#6EE7B7" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="10" font-weight="700" text-anchor="middle">3</text>
+</svg>
