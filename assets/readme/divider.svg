@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 40" width="800" height="40">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 50" width="800" height="50">
   <defs>
-    <!-- Center Line Linear Gradient -->
+    <!-- Pulse line gradient -->
     <linearGradient id="divider-grad" x1="0%" y1="0%" x2="100%" y2="0%">
       <stop offset="0%" stop-color="#7DD3FC" stop-opacity="0" />
       <stop offset="15%" stop-color="#7DD3FC" stop-opacity="0.3" />
@@ -13,8 +13,33 @@
       <stop offset="100%" stop-color="#6EE7B7" stop-opacity="0" />
     </linearGradient>
 
-    <!-- Center Pulse Glow -->
-    <filter id="divider-glow" x="-20%" y="-100%" width="140%" height="300%">
+    <!-- Blob core gradient -->
+    <radialGradient id="blob-core" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#F9A8D4" stop-opacity="0.95" />
+      <stop offset="30%" stop-color="#A78BFA" stop-opacity="0.75" />
+      <stop offset="65%" stop-color="#7DD3FC" stop-opacity="0.45" />
+      <stop offset="100%" stop-color="#6EE7B7" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Blob halo gradient -->
+    <radialGradient id="blob-halo" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#A78BFA" stop-opacity="0.3" />
+      <stop offset="40%" stop-color="#7DD3FC" stop-opacity="0.15" />
+      <stop offset="100%" stop-color="#7DD3FC" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Blob blur -->
+    <filter id="blob-blur" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="5" />
+    </filter>
+
+    <!-- Halo blur -->
+    <filter id="halo-blur" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="8" />
+    </filter>
+
+    <!-- Pulse line glow -->
+    <filter id="pulse-glow" x="-20%" y="-100%" width="140%" height="300%">
       <feGaussianBlur stdDeviation="2.5" result="blur" />
       <feMerge>
         <feMergeNode in="blur" />
@@ -22,81 +47,105 @@
       </feMerge>
     </filter>
 
-    <radialGradient id="node-glow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#F9A8D4" stop-opacity="0.6" />
-      <stop offset="100%" stop-color="#F9A8D4" stop-opacity="0" />
-    </radialGradient>
+    <!-- Line segment glow -->
+    <filter id="line-glow" x="-10%" y="-100%" width="120%" height="300%">
+      <feGaussianBlur stdDeviation="1.5" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
   </defs>
 
-  <!-- Base Muted Guide Line with End Fade -->
-  <line x1="50" y1="20" x2="750" y2="20" stroke="#26262a" stroke-width="1" stroke-dasharray="2 6" />
+  <!-- ═══ Base guide line ═══ -->
+  <line x1="60" y1="25" x2="740" y2="25" stroke="#1e1e24" stroke-width="1" stroke-dasharray="2 8" />
 
-  <!-- Left Side: Stylized Code Dashes & Dots -->
-  <!-- Outer faint dash -->
-  <line x1="80" y1="20" x2="120" y2="20" stroke="#7DD3FC" stroke-width="2" stroke-linecap="round" opacity="0.25" />
-  
-  <!-- Cyan segment -->
-  <circle cx="140" cy="20" r="2.5" fill="#7DD3FC" opacity="0.5" />
-  <line x1="155" y1="20" x2="205" y2="20" stroke="#7DD3FC" stroke-width="2.5" stroke-linecap="round" opacity="0.65" />
-  <circle cx="220" cy="20" r="2" fill="#7DD3FC" opacity="0.75" />
-  <circle cx="232" cy="20" r="3" fill="#7DD3FC" opacity="0.9" />
+  <!-- ═══════════════════════════════════ -->
+  <!--  LEFT SIDE                         -->
+  <!-- ═══════════════════════════════════ -->
 
-  <!-- Purple segment -->
-  <line x1="248" y1="20" x2="288" y2="20" stroke="#A78BFA" stroke-width="3" stroke-linecap="round" opacity="0.85" />
-  <line x1="298" y1="20" x2="312" y2="20" stroke="#A78BFA" stroke-width="2" stroke-linecap="round" opacity="0.7" />
-  <circle cx="324" cy="20" r="2.5" fill="#A78BFA" opacity="0.9" />
-
-  <!-- Pink pre-pulse segment -->
-  <line x1="336" y1="20" x2="352" y2="20" stroke="#F9A8D4" stroke-width="2.5" stroke-linecap="round" />
-
-  <!-- Central EKG / Code Anatomy Heartbeat Pulse -->
-  <g filter="url(#divider-glow)">
-    <!-- Main Pulse Path -->
-    <path d="M 358 20 
-             L 372 20 
-             L 380 24 
-             L 388 8 
-             L 395 32 
-             L 402 12 
-             L 409 25 
-             L 416 18 
-             L 423 20 
-             L 442 20" 
-          fill="none" 
-          stroke="url(#divider-grad)" 
-          stroke-width="2.5" 
-          stroke-linecap="round" 
-          stroke-linejoin="round" />
-
-    <!-- Pulse Apex Nodes -->
-    <circle cx="388" cy="8" r="2.5" fill="#7DD3FC" />
-    <circle cx="395" cy="32" r="2" fill="#F9A8D4" />
-    <circle cx="402" cy="12" r="3" fill="#A78BFA" />
-    <circle cx="409" cy="25" r="2" fill="#6EE7B7" />
+  <line x1="80" y1="25" x2="115" y2="25" stroke="#7DD3FC" stroke-width="2" stroke-linecap="round" opacity="0.2" />
+  <circle cx="130" cy="25" r="2" fill="#7DD3FC" opacity="0.35" />
+  <line x1="145" y1="25" x2="195" y2="25" stroke="#7DD3FC" stroke-width="2.5" stroke-linecap="round" opacity="0.5" />
+  <circle cx="210" cy="25" r="2" fill="#7DD3FC" opacity="0.6" />
+  <circle cx="222" cy="25" r="2.5" fill="#7DD3FC" opacity="0.75" />
+  <path d="M 235 20 L 230 25 L 235 30" fill="none" stroke="#7DD3FC" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.5" />
+  <line x1="248" y1="25" x2="290" y2="25" stroke="#A78BFA" stroke-width="3" stroke-linecap="round" opacity="0.7" />
+  <line x1="300" y1="25" x2="318" y2="25" stroke="#A78BFA" stroke-width="2" stroke-linecap="round" opacity="0.6" />
+  <circle cx="330" cy="25" r="2.5" fill="#A78BFA" opacity="0.8" />
+  <g filter="url(#line-glow)">
+    <line x1="342" y1="25" x2="358" y2="25" stroke="#F9A8D4" stroke-width="2.5" stroke-linecap="round" opacity="0.85" />
   </g>
 
-  <!-- Ambient Glow behind the main peak -->
-  <circle cx="400" cy="20" r="18" fill="url(#node-glow)" pointer-events="none" />
+  <!-- ═══════════════════════════════════ -->
+  <!--  CENTER: Pulsing Blob (BEHIND)     -->
+  <!-- ═══════════════════════════════════ -->
 
-  <!-- Right Side: Stylized Code Dashes & Dots -->
-  <!-- Pink post-pulse segment -->
-  <line x1="448" y1="20" x2="464" y2="20" stroke="#F9A8D4" stroke-width="2.5" stroke-linecap="round" />
-  <circle cx="476" cy="20" r="2.5" fill="#A78BFA" opacity="0.9" />
+  <!-- Outer halo — big soft glow, pulses -->
+  <g transform="translate(393,25)">
+    <ellipse cx="0" cy="0" rx="38" ry="24" fill="url(#blob-halo)" filter="url(#halo-blur)" opacity="0.7">
+      <animateTransform attributeName="transform" type="scale" values="1;1.25;1" dur="3s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1" />
+      <animate attributeName="opacity" values="0.7;0.4;0.7" dur="3s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1" />
+    </ellipse>
+  </g>
 
-  <!-- Purple segment -->
-  <line x1="488" y1="20" x2="502" y2="20" stroke="#A78BFA" stroke-width="2" stroke-linecap="round" opacity="0.7" />
-  <line x1="512" y1="20" x2="552" y2="20" stroke="#A78BFA" stroke-width="3" stroke-linecap="round" opacity="0.85" />
+  <!-- Core blob — the main colored shape, pulses -->
+  <g transform="translate(393,25)">
+    <ellipse cx="0" cy="0" rx="28" ry="18" fill="url(#blob-core)" filter="url(#blob-blur)" opacity="0.85">
+      <animateTransform attributeName="transform" type="scale" values="1;1.2;1" dur="3s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1" />
+      <animate attributeName="opacity" values="0.85;0.55;0.85" dur="3s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1" />
+    </ellipse>
+  </g>
 
-  <!-- Green segment -->
-  <circle cx="568" cy="20" r="3" fill="#6EE7B7" opacity="0.9" />
-  <circle cx="580" cy="20" r="2" fill="#6EE7B7" opacity="0.75" />
-  <line x1="595" y1="20" x2="645" y2="20" stroke="#6EE7B7" stroke-width="2.5" stroke-linecap="round" opacity="0.65" />
-  <circle cx="660" cy="20" r="2.5" fill="#6EE7B7" opacity="0.5" />
+  <!-- Hot center — bright white core, pulses -->
+  <g transform="translate(400,25)">
+    <ellipse cx="0" cy="0" rx="12" ry="8" fill="#FFFFFF" filter="url(#blob-blur)" opacity="0.18">
+      <animateTransform attributeName="transform" type="scale" values="1;1.3;1" dur="3s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1" />
+      <animate attributeName="opacity" values="0.18;0.08;0.18" dur="3s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1" />
+    </ellipse>
+  </g>
 
-  <!-- Outer faint dash -->
-  <line x1="680" y1="20" x2="720" y2="20" stroke="#6EE7B7" stroke-width="2" stroke-linecap="round" opacity="0.25" />
+  <!-- ═══════════════════════════════════ -->
+  <!--  CENTER: EKG Pulse Line (ON TOP)   -->
+  <!-- ═══════════════════════════════════ -->
 
-  <!-- Code bracket accents on flanks < and > -->
-  <path d="M 238 15 L 233 20 L 238 25" fill="none" stroke="#7DD3FC" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.6" />
-  <path d="M 562 15 L 567 20 L 562 25" fill="none" stroke="#6EE7B7" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.6" />
+  <g filter="url(#pulse-glow)">
+    <path d="M 364 25
+             L 375 25
+             L 381 28
+             L 388 10
+             L 395 38
+             L 402 14
+             L 409 30
+             L 416 22
+             L 424 25
+             L 436 25"
+          fill="none"
+          stroke="url(#divider-grad)"
+          stroke-width="2.5"
+          stroke-linecap="round"
+          stroke-linejoin="round" />
+
+    <circle cx="388" cy="10" r="2.5" fill="#7DD3FC" />
+    <circle cx="395" cy="38" r="2" fill="#F9A8D4" />
+    <circle cx="402" cy="14" r="3" fill="#A78BFA" />
+    <circle cx="409" cy="30" r="2" fill="#6EE7B7" />
+  </g>
+
+  <!-- ═══════════════════════════════════ -->
+  <!--  RIGHT SIDE                        -->
+  <!-- ═══════════════════════════════════ -->
+
+  <g filter="url(#line-glow)">
+    <line x1="442" y1="25" x2="458" y2="25" stroke="#F9A8D4" stroke-width="2.5" stroke-linecap="round" opacity="0.85" />
+  </g>
+  <circle cx="470" cy="25" r="2.5" fill="#A78BFA" opacity="0.8" />
+  <line x1="482" y1="25" x2="500" y2="25" stroke="#A78BFA" stroke-width="2" stroke-linecap="round" opacity="0.6" />
+  <line x1="510" y1="25" x2="552" y2="25" stroke="#A78BFA" stroke-width="3" stroke-linecap="round" opacity="0.7" />
+  <path d="M 565 20 L 570 25 L 565 30" fill="none" stroke="#6EE7B7" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.5" />
+  <circle cx="578" cy="25" r="2.5" fill="#6EE7B7" opacity="0.75" />
+  <circle cx="590" cy="25" r="2" fill="#6EE7B7" opacity="0.6" />
+  <line x1="605" y1="25" x2="655" y2="25" stroke="#6EE7B7" stroke-width="2.5" stroke-linecap="round" opacity="0.5" />
+  <circle cx="670" cy="25" r="2" fill="#6EE7B7" opacity="0.35" />
+  <line x1="685" y1="25" x2="720" y2="25" stroke="#6EE7B7" stroke-width="2" stroke-linecap="round" opacity="0.2" />
 </svg>
