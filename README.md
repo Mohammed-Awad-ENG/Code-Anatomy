@@ -164,28 +164,95 @@ npm run dev:firefox      # → Firefox
 ### Load the Extension
 
 <details>
-<summary><strong>🟢 Chrome / Edge / Brave (Chromium-based)</strong></summary>
+<summary><strong>🟢 Google Chrome</strong></summary>
 
-1. Open `chrome://extensions` (or `edge://extensions` for Edge)
-2. Enable **Developer mode** (toggle in the top-right)
+1. Open `chrome://extensions` in your address bar
+2. Enable **Developer mode** (toggle in the top-right corner)
 3. Click **"Load unpacked"**
 4. Select the `.output/chrome-mv3/` folder from this project
+5. The Code Anatomy icon will appear in your toolbar
+
+</details>
+
+<details>
+<summary><strong>🔵 Microsoft Edge</strong></summary>
+
+1. Open `edge://extensions` in your address bar
+2. Enable **Developer mode** (toggle in the left sidebar)
+3. Click **"Load unpacked"**
+4. Select the `.output/chrome-mv3/` folder (Edge uses the same Chrome build)
+5. The Code Anatomy icon will appear in your toolbar
+
+</details>
+
+<details>
+<summary><strong>🟠 Brave</strong></summary>
+
+1. Open `brave://extensions` in your address bar
+2. Enable **Developer mode** (toggle in the top-right corner)
+3. Click **"Load unpacked"**
+4. Select the `.output/chrome-mv3/` folder (Brave uses the Chrome build)
+5. The Code Anatomy icon will appear in your toolbar
+
+> **Note:** Brave Shields may interfere with the Gemini AI API calls. If AI features don't work, click the Brave Shield icon and allow connections to `generativelanguage.googleapis.com`.
+
+</details>
+
+<details>
+<summary><strong>🔴 Vivaldi</strong></summary>
+
+1. Open `vivaldi://extensions` in your address bar
+2. Enable **Developer mode** (toggle in the top-right corner)
+3. Click **"Load unpacked"**
+4. Select the `.output/chrome-mv3/` folder (Vivaldi uses the Chrome build)
+5. The Code Anatomy icon will appear in your toolbar
+
+> **Note:** In Vivaldi, the side panel may appear as a **Web Panel**. You can also pin it to Vivaldi's sidebar for quick access.
+
+</details>
+
+<details>
+<summary><strong>🔴 Opera</strong></summary>
+
+1. Open `opera://extensions` in your address bar
+2. Enable **Developer mode** (toggle in the top-right corner)
+3. Click **"Load unpacked"**
+4. Select the `.output/chrome-mv3/` folder (Opera uses the Chrome build)
+5. The Code Anatomy icon will appear in your toolbar
+
+> **Note:** If you're using Opera GX, the same steps apply. Opera's built-in ad blocker should not affect extension functionality.
 
 </details>
 
 <details>
 <summary><strong>🟠 Firefox</strong></summary>
 
-1. Open `about:debugging#/runtime/this-firefox`
+1. Open `about:debugging#/runtime/this-firefox` in your address bar
 2. Click **"Load Temporary Add-on..."**
 3. Navigate to `.output/firefox-mv3/` and select the `manifest.json` file
+4. The Code Anatomy icon will appear in your toolbar
+
+> **⚠️ Important:** Firefox temporary add-ons are removed when Firefox closes. For persistent installation, the extension needs to be signed via [Firefox Add-ons](https://addons.mozilla.org/).
+
+</details>
+
+<details>
+<summary><strong>⚪ Safari</strong></summary>
+
+Safari requires extensions to be distributed through the Mac App Store or converted using Xcode. **Direct loading of unpacked extensions is not supported.**
+
+To use Code Anatomy on Safari:
+1. Consider using the Chrome or Firefox version instead
+2. If you need Safari specifically, the extension would need to be converted using Apple's `safari-web-extension-converter` tool and built with Xcode
+
+> **⚠️ Not officially supported** — Safari's extension model differs significantly from Chromium/Firefox. We recommend using a Chromium-based browser or Firefox for the best experience.
 
 </details>
 
 ### Build for Production
 
 ```bash
-npm run build              # → Chrome production build
+npm run build              # → Chrome production build (works for all Chromium browsers)
 npm run build:firefox      # → Firefox production build
 
 npm run zip                # → Chrome .zip for distribution
@@ -297,8 +364,6 @@ Choose the right build for your browser:
 <td>
 
 ```bash
-npm run dev
-# or
 npm run build
 ```
 
@@ -317,8 +382,60 @@ npm run build
 <td>
 
 ```bash
-npm run dev
-# or
+npm run build
+```
+
+</td>
+<td>
+
+`.output/chrome-mv3/`
+
+</td>
+<td>Side Panel API</td>
+</tr>
+<tr>
+<td align="center">
+  <img src="assets/readme/brave-badge.svg" width="140" alt="Brave" />
+</td>
+<td>
+
+```bash
+npm run build
+```
+
+</td>
+<td>
+
+`.output/chrome-mv3/`
+
+</td>
+<td>Side Panel API</td>
+</tr>
+<tr>
+<td align="center">
+  <img src="assets/readme/vivaldi-badge.svg" width="140" alt="Vivaldi" />
+</td>
+<td>
+
+```bash
+npm run build
+```
+
+</td>
+<td>
+
+`.output/chrome-mv3/`
+
+</td>
+<td>Side Panel API</td>
+</tr>
+<tr>
+<td align="center">
+  <img src="assets/readme/opera-badge.svg" width="140" alt="Opera" />
+</td>
+<td>
+
+```bash
 npm run build
 ```
 
@@ -337,8 +454,6 @@ npm run build
 <td>
 
 ```bash
-npm run dev:firefox
-# or
 npm run build:firefox
 ```
 
@@ -350,12 +465,29 @@ npm run build:firefox
 </td>
 <td>Sidebar Action</td>
 </tr>
+<tr>
+<td align="center">
+  <img src="assets/readme/safari-badge.svg" width="140" alt="Safari" />
+</td>
+<td>
+
+—
+
+</td>
+<td>
+
+—
+
+</td>
+<td>Not Supported</td>
+</tr>
 </table>
 
 > [!NOTE]
-> **Chrome & Edge** use the `sidePanel` API (Manifest V3). **Firefox** uses the `sidebar_action` API. The WXT framework handles this automatically — just use the right build command.
+> All **Chromium-based browsers** (Chrome, Edge, Brave, Vivaldi, Opera, Arc) use the same Chrome build with the `sidePanel` API. **Firefox** uses its own `sidebar_action` API. The WXT framework handles these differences automatically.
 
-> **Brave, Vivaldi, Opera, Arc** — any Chromium-based browser works with the Chrome build.
+> [!WARNING]
+> **Safari** does not support loading unpacked Manifest V3 extensions. It requires conversion via Xcode and distribution through the Mac App Store.
 
 <br/>
 

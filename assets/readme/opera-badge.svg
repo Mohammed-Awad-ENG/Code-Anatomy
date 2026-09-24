@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 50" width="200" height="50">
+  <defs>
+    <linearGradient id="badge-bg-opera" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#14151b" />
+      <stop offset="100%" stop-color="#1c1d26" />
+    </linearGradient>
+    <linearGradient id="opera-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FF1B2D" />
+      <stop offset="100%" stop-color="#A70014" />
+    </linearGradient>
+  </defs>
+
+  <style>
+    .badge-title { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; font-weight: 600; font-size: 14px; letter-spacing: -0.2px; }
+    .badge-sub { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-weight: 500; font-size: 9.5px; letter-spacing: 0.5px; }
+  </style>
+
+  <!-- Badge Pill Container -->
+  <rect x="1" y="1" width="198" height="48" rx="24" fill="url(#badge-bg-opera)" stroke="#333545" stroke-width="1.2" />
+
+  <!-- Accent Light -->
+  <path d="M 25 1 L 175 1" stroke="#FF1B2D" stroke-width="1" stroke-opacity="0.3" stroke-linecap="round" />
+
+  <!-- Opera Icon (O shape) -->
+  <g transform="translate(20, 11)">
+    <circle cx="10" cy="13" r="12" fill="#111" />
+    <circle cx="10" cy="13" r="11" fill="url(#opera-grad)" />
+    <!-- Inner O cutout -->
+    <ellipse cx="10" cy="13" rx="5.5" ry="8" fill="#14151b" />
+    <!-- Inner O highlight -->
+    <ellipse cx="10" cy="13" rx="4" ry="6.5" fill="none" stroke="url(#opera-grad)" stroke-width="2" />
+  </g>
+
+  <!-- Browser Name -->
+  <text x="56" y="24" fill="#FFFFFF" class="badge-title">Opera</text>
+
+  <!-- Status indicator -->
+  <circle cx="59" cy="36" r="2.5" fill="#6EE7B7" />
+  <text x="66" y="39.5" fill="#6EE7B7" class="badge-sub">Supported</text>
+
+  <!-- Right Pill Accent Arrow -->
+  <circle cx="178" cy="25" r="9" fill="#222433" />
+  <path d="M 176 21 L 180 25 L 176 29" fill="none" stroke="#7DD3FC" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+</svg>
