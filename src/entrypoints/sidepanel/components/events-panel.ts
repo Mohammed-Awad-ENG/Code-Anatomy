@@ -94,7 +94,7 @@ export function renderEventsPanel(data: ElementData, listeners: any[]) {
     domAccess.forEach((entry: any, idx: number) => {
       const targetNote = entry.targetLabel === 'self'
         ? '<span style="color: #6EE7B7; font-size: 10px; margin-left: 8px;">→ this element</span>'
-        : `<span style="color: #E2E8F0; font-size: 11px; letter-spacing: 0.3px; margin-left: 8px;">→ &lt;${escapeHtml(entry.targetLabel)}&gt; inside</span>`;
+        : `<span class="child-target-badge">targets child &lt;${escapeHtml(entry.targetLabel)}&gt;</span>`;
       
       html += renderDomAccessCard(entry, targetNote, idx);
     });
@@ -110,15 +110,18 @@ export function renderEventsPanel(data: ElementData, listeners: any[]) {
     domManips.forEach((entry: any) => {
       const targetNote = entry.targetLabel === 'self'
         ? '<span style="color: #F9A8D4; font-size: 10px; margin-left: 8px;">→ this element</span>'
-        : `<span style="color: #E2E8F0; font-size: 11px; letter-spacing: 0.3px; margin-left: 8px;">→ &lt;${escapeHtml(entry.targetLabel)}&gt; inside</span>`;
-      
+        : `<span class="child-target-badge">applied to child &lt;${escapeHtml(entry.targetLabel)}&gt;</span>`;
+
+      const description = describeManipulation(entry.api, entry.detail);
+
       html += `
         <div style="margin-bottom: 12px; background: var(--bg-secondary); border-radius: 4px; padding: 12px; border: 1px solid var(--border); border-left: 3px solid #F9A8D4;">
-          <div style="display: flex; align-items: center; flex-wrap: wrap; margin-bottom: 8px;">
+          <div style="display: flex; align-items: center; flex-wrap: wrap; margin-bottom: 4px;">
             <span style="color: var(--syntax-func); font-family: var(--font-mono); font-size: 12px; font-weight: bold;">${escapeHtml(entry.api)}</span>
             <span style="color: var(--syntax-value); font-family: var(--font-mono); font-size: 11px; margin-left: 6px;">(${escapeHtml(entry.detail)})</span>
             ${targetNote}
           </div>
+          <div style="font-size: 11px; color: #E2E8F0; margin: 8px 0; padding: 6px 10px; background: rgba(249, 168, 212, 0.07); border-left: 2px solid rgba(249, 168, 212, 0.4); border-radius: 2px; line-height: 1.5;">${description}</div>
           ${entry.callerLocation ? `<div style="font-size: 10px; color: var(--text-secondary); font-family: var(--font-mono); word-break: break-all;">${escapeHtml(entry.callerLocation)}</div>` : ''}
         </div>
       `;
@@ -280,11 +283,59 @@ function sectionHeader(title: string, badge: string, color: string): string {
   `;
 }
 
+/**
+ * Generate a human-readable description of what a DOM manipulation did.
+ */
+function describeManipulation(api: string, detail: string): string {
+  // detail examples: 'popover="auto"', 'aria-hidden', 'active, visible', 'hidden, true'
+  switch (api) {
+    case 'setAttribute': {
+      const match = detail.match(/^(.+?)="(.*)"$/);
+      if (match) {
+        return `Set the <code>${escapeHtml(match[1])}</code> attribute to <code>"${escapeHtml(match[2])}"</code>`;
+      }
+      return `Set attribute: <code>${escapeHtml(detail)}</code>`;
+    }
+    case 'removeAttribute':
+      return `Removed the <code>${escapeHtml(detail)}</code> attribute`;
+    case 'classList.add': {
+      const classes = detail.split(',').map(c => c.trim());
+      const formatted = classes.map(c => `<code>"${escapeHtml(c)}"</code>`).join(', ');
+      return `Added CSS class${classes.length > 1 ? 'es' : ''} ${formatted}`;
+    }
+    case 'classList.remove': {
+      const classes = detail.split(',').map(c => c.trim());
+      const formatted = classes.map(c => `<code>"${escapeHtml(c)}"</code>`).join(', ');
+      return `Removed CSS class${classes.length > 1 ? 'es' : ''} ${formatted}`;
+    }
+    case 'classList.toggle': {
+      const parts = detail.split(',').map(p => p.trim());
+      const className = parts[0];
+      if (parts.length > 1) {
+        return `Toggled CSS class <code>"${escapeHtml(className)}"</code> (force: ${escapeHtml(parts[1])})`;
+      }
+      return `Toggled CSS class <code>"${escapeHtml(className)}"</code> on/off`;
+    }
+    default:
+      return `Called <code>${escapeHtml(api)}</code> with <code>${escapeHtml(detail)}</code>`;
+  }
+}
+
 function cardBlock(headerHtml: string, codeContent: string, accentColor: string): string {
+  const isNative = codeContent.includes('[native code]');
+
+  const codeHtml = isNative
+    ? `<pre style="font-size: 11px; color: var(--text-secondary); font-family: var(--font-mono); white-space: pre-wrap; word-break: break-all; margin: 0;">${highlightJS(codeContent)}</pre>
+       <div class="native-code-explainer">
+         <span class="native-code-icon">ⓘ</span>
+         <span>This is a <strong>built-in browser function</strong>. The source code is implemented in the browser engine (C++), not in JavaScript, so the browser shows <code>[native code]</code> instead of the actual implementation.</span>
+       </div>`
+    : `<pre style="font-size: 11px; color: var(--text-secondary); font-family: var(--font-mono); white-space: pre-wrap; word-break: break-all; margin: 0;">${escapeHtml(codeContent)}</pre>`;
+
   return `
     <div style="margin-bottom: 12px; background: var(--bg-secondary); border-radius: 4px; padding: 12px; border: 1px solid var(--border); border-left: 3px solid ${accentColor};">
       <div style="margin-bottom: 8px;">${headerHtml}</div>
-      <pre style="font-size: 11px; color: var(--text-secondary); font-family: var(--font-mono); white-space: pre-wrap; word-break: break-all; margin: 0;">${escapeHtml(codeContent)}</pre>
+      ${codeHtml}
     </div>
   `;
 }
