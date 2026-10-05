@@ -21,7 +21,16 @@
 
     <main class="tab-content stacked-layout">
       <section id="html-panel" class="panel">
-        <h2 class="section-header">HTML</h2>
+        <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 4px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background-color: var(--bg-primary); z-index: 10; padding-top: 8px;">
+          <h2 style="font-size: 14px; font-weight: normal; margin: 0; padding: 0; border: none;">HTML</h2>
+          <form id="codepen-form" action="https://codepen.io/pen/define" method="POST" target="_blank" style="margin: 0; display: none;">
+            <input type="hidden" name="data" id="codepen-data" value="">
+            <button type="submit" id="export-codepen-btn" class="icon-btn" title="Export to Sandbox" style="font-size: 11px; padding: 2px 6px; border: 1px solid var(--border); border-radius: 4px; display: flex; align-items: center; gap: 4px;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+              Sandbox
+            </button>
+          </form>
+        </div>
         <div class="panel-body">
           <p class="empty-state">Waiting for selection...</p>
         </div>
@@ -53,6 +62,27 @@
               <button id="ai-chat-submit-btn" class="btn-primary">Ask</button>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section id="typography-panel" class="panel">
+        <h2 class="section-header">Typography</h2>
+        <div class="panel-body">
+          <p class="empty-state">Waiting for selection...</p>
+        </div>
+      </section>
+
+      <section id="a11y-panel" class="panel">
+        <h2 class="section-header">Accessibility</h2>
+        <div class="panel-body">
+          <p class="empty-state">Waiting for selection...</p>
+        </div>
+      </section>
+
+      <section id="animation-panel" class="panel">
+        <h2 class="section-header">Animations</h2>
+        <div class="panel-body">
+          <p class="empty-state">Waiting for selection...</p>
         </div>
       </section>
     </main>

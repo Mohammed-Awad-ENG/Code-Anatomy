@@ -424,6 +424,7 @@ export default defineContentScript({
       // 5. Authored Rules
       const matchedRules: { selector: string; cssText: string; media?: string }[] = [];
       const pseudoRules: { selector: string; cssText: string; pseudoClass: string; media?: string }[] = [];
+      const descendantRules: { selector: string; cssText: string; media?: string }[] = [];
       const interactionPseudos = [
         ':hover', ':focus', ':active', ':focus-within', ':focus-visible', ':target',
         ':visited', ':checked', ':disabled', ':enabled', ':read-only', ':read-write',
@@ -477,22 +478,39 @@ export default defineContentScript({
           }
 
           try {
-            if (el.matches(baseSelector)) {
-              if (isPseudo) {
-                // Emit one pseudoRule per detected state so each state
-                // can be independently toggled without invalid attribute names
-                for (const pseudo of detectedPseudos) {
-                  pseudoRules.push({
+            const matchesSelf = el.matches(baseSelector);
+            const matchesDescendant = el.querySelector(baseSelector) !== null;
+
+            if (matchesSelf || matchesDescendant) {
+              const cleanCssText = rule.style.cssText;
+              
+              if (!cleanCssText) continue;
+
+              if (matchesSelf) {
+                if (isPseudo) {
+                  // Emit one pseudoRule per detected state so each state
+                  // can be independently toggled without invalid attribute names
+                  for (const pseudo of detectedPseudos) {
+                    pseudoRules.push({
+                      selector: selector,
+                      cssText: cleanCssText,
+                      pseudoClass: pseudo,
+                      media: mediaText
+                    });
+                  }
+                } else {
+                  matchedRules.push({
                     selector: selector,
-                    cssText: rule.style.cssText,
-                    pseudoClass: pseudo,
+                    cssText: cleanCssText,
                     media: mediaText
                   });
                 }
-              } else {
-                matchedRules.push({
+              }
+
+              if (matchesDescendant) {
+                descendantRules.push({
                   selector: selector,
-                  cssText: rule.style.cssText,
+                  cssText: cleanCssText,
                   media: mediaText
                 });
               }
@@ -597,6 +615,104 @@ export default defineContentScript({
         }
       }
 
+      // 7. A11y Data
+      const ariaAttributes: Record<string, string> = {};
+      for (const attr of el.attributes) {
+        if (attr.name.startsWith('aria-')) {
+          ariaAttributes[attr.name] = attr.value;
+        }
+      }
+      
+      // Calculate contrast ratio naively
+      let contrastRatio: number | null = null;
+      try {
+        const getLum = (r: number, g: number, b: number) => {
+          const a = [r, g, b].map(v => {
+            v /= 255;
+            return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+          });
+          return a[0] * 0.2126 + a[1] * 0.7152 + a[2] * 0.0722;
+        };
+        
+        let bgNode: HTMLElement | null = el;
+        let bgRgba = [255, 255, 255, 1]; // default white
+        while (bgNode) {
+          const bg = window.getComputedStyle(bgNode).backgroundColor;
+          const match = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+          if (match && (match[4] === undefined || parseFloat(match[4]) > 0)) {
+            const alpha = match[4] ? parseFloat(match[4]) : 1;
+            bgRgba = [parseInt(match[1]), parseInt(match[2]), parseInt(match[3]), alpha];
+            if (alpha === 1) break;
+          }
+          bgNode = bgNode.parentElement;
+        }
+        
+        const fg = computed.color;
+        const fgMatch = fg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+        if (fgMatch) {
+          const lum1 = getLum(bgRgba[0], bgRgba[1], bgRgba[2]);
+          const lum2 = getLum(parseInt(fgMatch[1]), parseInt(fgMatch[2]), parseInt(fgMatch[3]));
+          const brightest = Math.max(lum1, lum2);
+          const darkest = Math.min(lum1, lum2);
+          contrastRatio = (brightest + 0.05) / (darkest + 0.05);
+        }
+      } catch (e) {}
+
+      const a11yData = {
+        role: el.getAttribute('role'),
+        ariaAttributes,
+        alt: el.getAttribute('alt'),
+        tabIndex: el.tabIndex,
+        isFocusable: el.tabIndex >= 0,
+        contrastRatio
+      };
+
+      // 8. Typography Data
+      const typographyData = {
+        fontFamily: computed.getPropertyValue('font-family'),
+        fontSize: computed.getPropertyValue('font-size'),
+        fontWeight: computed.getPropertyValue('font-weight'),
+        lineHeight: computed.getPropertyValue('line-height'),
+        letterSpacing: computed.getPropertyValue('letter-spacing'),
+        color: computed.getPropertyValue('color'),
+        textAlign: computed.getPropertyValue('text-align'),
+        textTransform: computed.getPropertyValue('text-transform'),
+        fontVariationSettings: computed.getPropertyValue('font-variation-settings')
+      };
+
+      // 9. Animation Data
+      let activeAnimations: any[] = [];
+      try {
+        if (typeof el.getAnimations === 'function') {
+          activeAnimations = el.getAnimations().map(anim => {
+            let type = 'web-animation';
+            if (anim.constructor.name === 'CSSAnimation') type = 'css-animation';
+            else if (anim.constructor.name === 'CSSTransition') type = 'css-transition';
+            
+            const effect = anim.effect;
+            const timing = effect ? effect.getTiming() : null;
+            
+            return {
+              name: (anim as any).animationName || (anim as any).transitionProperty || anim.id || 'unnamed',
+              duration: typeof timing?.duration === 'number' ? timing.duration : 0,
+              delay: typeof timing?.delay === 'number' ? timing.delay : 0,
+              playState: anim.playState,
+              currentTime: anim.currentTime,
+              type
+            };
+          });
+        }
+      } catch (e) {}
+
+      const animationData = {
+        hasAnimations: activeAnimations.length > 0 || computed.animationName !== 'none' || computed.transitionProperty !== 'all',
+        activeAnimations,
+        cssProperties: {
+          animation: computed.animation,
+          transition: computed.transition
+        }
+      };
+
       return {
         tagName,
         id,
@@ -607,7 +723,11 @@ export default defineContentScript({
         computedStyles,
         matchedRules,
         pseudoRules,
-        frameworkEvents
+        descendantRules,
+        frameworkEvents,
+        a11yData,
+        typographyData,
+        animationData
       };
     }
   },

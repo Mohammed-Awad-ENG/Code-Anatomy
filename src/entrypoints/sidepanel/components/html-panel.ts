@@ -30,6 +30,102 @@ export function renderHtmlPanel(data: ElementData) {
     btn.textContent = 'Copied ✓';
     setTimeout(() => { btn.textContent = 'Copy HTML'; }, 2000);
   });
+
+  // Setup CodePen Export
+  const codepenForm = document.getElementById('codepen-form') as HTMLFormElement;
+  const codepenDataInput = document.getElementById('codepen-data') as HTMLInputElement;
+  
+  if (codepenForm && codepenDataInput) {
+    let cssText = '';
+    
+    // Add all matched rules
+    data.matchedRules.forEach(rule => {
+      const ruleBlock = `${rule.selector} { ${rule.cssText} }`;
+      if (rule.media) {
+        cssText += `@media ${rule.media} { ${ruleBlock} }\n`;
+      } else {
+        cssText += `${ruleBlock}\n`;
+      }
+    });
+
+    // Add all pseudo rules
+    data.pseudoRules.forEach(rule => {
+      const ruleBlock = `${rule.selector} { ${rule.cssText} }`;
+      if (rule.media) {
+        cssText += `@media ${rule.media} { ${ruleBlock} }\n`;
+      } else {
+        cssText += `${ruleBlock}\n`;
+      }
+    });
+
+    // Add descendant rules
+    if (data.descendantRules) {
+      data.descendantRules.forEach(rule => {
+        const ruleBlock = `${rule.selector} { ${rule.cssText} }`;
+        if (rule.media) {
+          cssText += `@media ${rule.media} { ${ruleBlock} }\n`;
+        } else {
+          cssText += `${ruleBlock}\n`;
+        }
+      });
+    }
+
+    let jsText = '';
+    const anyData = data as any;
+    let hasJs = false;
+
+    if (anyData.listeners && anyData.listeners.length > 0) {
+      hasJs = true;
+      jsText += `const rootElement = document.body.firstElementChild;\n\n`;
+      anyData.listeners.forEach((l: any) => {
+        jsText += `rootElement?.addEventListener('${l.type}', function(event) {\n`;
+        jsText += `  /* Original Source (${l.functionName}):\n`;
+        const lines = (l.sourcePreview || '').split('\\n');
+        lines.forEach((line: string) => {
+          jsText += `     ${line}\n`;
+        });
+        jsText += `  */\n`;
+        jsText += `});\n\n`;
+      });
+    }
+
+    if (anyData.childListeners && anyData.childListeners.length > 0) {
+      hasJs = true;
+      if (!anyData.listeners || anyData.listeners.length === 0) {
+        jsText += `const rootElement = document.body.firstElementChild;\n\n`;
+      }
+      anyData.childListeners.forEach((l: any) => {
+        // Safe query selector string
+        const safeTarget = (l.targetLabel || '').replace(/"/g, '\\\\\"');
+        jsText += `// Target: ${l.targetLabel}\n`;
+        jsText += `rootElement?.querySelector("${safeTarget}")?.addEventListener('${l.type}', function(event) {\n`;
+        jsText += `  /* Original Source (${l.functionName}):\n`;
+        const lines = (l.sourcePreview || '').split('\\n');
+        lines.forEach((line: string) => {
+          jsText += `     ${line}\n`;
+        });
+        jsText += `  */\n`;
+        jsText += `});\n\n`;
+      });
+    }
+
+    if (hasJs) {
+      jsText = `// Note: This JavaScript scaffold was exported from Code Anatomy.\n` +
+               `// The original function bodies are provided as comments since they\n` +
+               `// might rely on external scope or frameworks (React/Vue/etc).\n\n` + jsText;
+    }
+
+    const penData = {
+      title: "Code Anatomy Export",
+      description: "Exported from Code Anatomy browser extension",
+      html: formattedHtml,
+      css: cssText,
+      js: jsText
+    };
+
+    codepenDataInput.value = JSON.stringify(penData);
+    codepenForm.style.display = 'block';
+  }
 }
 
 function formatHTML(html: string): string {

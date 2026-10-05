@@ -53,6 +53,43 @@ export interface JsData {
   domManipulations: JsDomManipulationEntry[];
 }
 
+export interface A11yData {
+  role: string | null;
+  ariaAttributes: Record<string, string>;
+  alt: string | null;
+  tabIndex: number;
+  isFocusable: boolean;
+  contrastRatio: number | null;
+}
+
+export interface TypographyData {
+  fontFamily: string;
+  fontSize: string;
+  fontWeight: string;
+  lineHeight: string;
+  letterSpacing: string;
+  color: string;
+  textAlign: string;
+  textTransform: string;
+  fontVariationSettings: string;
+}
+
+export interface AnimationData {
+  hasAnimations: boolean;
+  activeAnimations: {
+    name: string;
+    duration: number;
+    delay: number;
+    playState: string;
+    currentTime: number | null;
+    type: 'css-animation' | 'css-transition' | 'web-animation';
+  }[];
+  cssProperties: {
+    animation: string;
+    transition: string;
+  };
+}
+
 export interface ElementData {
   tagName: string;
   id: string;
@@ -63,8 +100,12 @@ export interface ElementData {
   computedStyles: Record<string, string>;
   matchedRules: { selector: string; cssText: string; media?: string }[];
   pseudoRules: { selector: string; cssText: string; pseudoClass: string; media?: string }[];
+  descendantRules?: { selector: string; cssText: string; media?: string }[];
   /** New comprehensive JavaScript data */
   jsData?: JsData;
+  a11yData?: A11yData;
+  typographyData?: TypographyData;
+  animationData?: AnimationData;
   // Legacy fields kept for transition
   listeners?: any[];
   frameworkEvents?: { event: string; handler: string }[];
