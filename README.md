@@ -38,6 +38,7 @@
 - Syntax-highlighted with tag, attribute & value coloring
 - Pretty-printed with proper indentation
 - **One-click copy** to clipboard
+- **Export to Sandbox**: Instantly export the full component tree (HTML, descendant CSS, and Vanilla JS scaffold) to CodePen.
 
 </td>
 <td width="50%">
@@ -548,6 +549,7 @@ Code Anatomy
 - Pretty-printed with indentation
 - Syntax highlighted (tags, attributes, values, text)
 - Copy button
+- **Export to Sandbox**: Button to export the entire component to CodePen
 
 </details>
 
