@@ -9,8 +9,23 @@ export function renderA11yPanel(data: ElementData) {
     return;
   }
 
-  const { role, ariaAttributes, alt, tabIndex, isFocusable, contrastRatio } = data.a11yData;
+  const { role, ariaAttributes, alt, tabIndex, isFocusable, contrastRatio, warnings } = data.a11yData;
   let html = `<div style="display: flex; flex-direction: column; gap: 16px;">`;
+
+  // Warnings
+  if (warnings && warnings.length > 0) {
+    html += `
+      <div style="background: rgba(224, 108, 117, 0.1); padding: 12px; border-radius: 6px; border: 1px solid #E06C75; border-left: 4px solid #E06C75;">
+        <span style="color: #E06C75; font-size: 12px; font-weight: bold; text-transform: uppercase; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+          Accessibility Warnings
+        </span>
+        <ul style="margin: 0; padding-left: 20px; color: var(--text-primary); font-size: 13px; display: flex; flex-direction: column; gap: 4px;">
+          ${warnings.map(w => `<li>${w}</li>`).join('')}
+        </ul>
+      </div>
+    `;
+  }
 
   // Role & Focus
   html += `

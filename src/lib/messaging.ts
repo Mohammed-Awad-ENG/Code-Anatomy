@@ -60,6 +60,7 @@ export interface A11yData {
   tabIndex: number;
   isFocusable: boolean;
   contrastRatio: number | null;
+  warnings?: string[];
 }
 
 export interface TypographyData {
@@ -106,6 +107,7 @@ export interface ElementData {
   a11yData?: A11yData;
   typographyData?: TypographyData;
   animationData?: AnimationData;
+  colorPalette?: string[];
   // Legacy fields kept for transition
   listeners?: any[];
   frameworkEvents?: { event: string; handler: string }[];

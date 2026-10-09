@@ -7,6 +7,7 @@ import { initAiPanel, resetAiPanel } from './components/ai-panel';
 import { renderTypographyPanel } from './components/typography-panel';
 import { renderA11yPanel } from './components/a11y-panel';
 import { renderAnimationPanel } from './components/animation-panel';
+import { renderColorPanel } from './components/color-panel';
 import type { ElementData } from '../../lib/messaging';
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -57,6 +58,7 @@ function handleElementSelected(data: ElementData) {
   renderTypographyPanel(data);
   renderA11yPanel(data);
   renderAnimationPanel(data);
+  renderColorPanel(data);
 }
 
 

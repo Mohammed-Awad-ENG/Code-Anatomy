@@ -115,6 +115,31 @@ body {
   background-color: var(--bg-primary);
   z-index: 10;
   padding-top: 8px;
+  list-style: none;
+  padding-right: 24px;
+}
+
+.section-header::-webkit-details-marker {
+  display: none;
+}
+
+.section-header::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%) rotate(-90deg);
+  width: 16px;
+  height: 16px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%230078D4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  transition: transform 0.2s ease;
+  pointer-events: none;
+}
+
+details[open] .section-header::after {
+  transform: translateY(-50%) rotate(0deg);
 }
 
 /* Main Content */

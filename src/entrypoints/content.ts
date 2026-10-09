@@ -658,13 +658,34 @@ export default defineContentScript({
         }
       } catch (e) {}
 
+      const warnings: string[] = [];
+      if (tagName === 'img' && !el.hasAttribute('alt')) {
+        warnings.push("Missing 'alt' attribute on image");
+      }
+      if (tagName === 'input' && el.getAttribute('type') !== 'hidden') {
+        const hasAriaLabel = el.hasAttribute('aria-label') || el.hasAttribute('aria-labelledby');
+        const hasTitle = el.hasAttribute('title');
+        const root = el.getRootNode() as Document | ShadowRoot;
+        const hasLabel = el.id && root.querySelector && root.querySelector(`label[for="${CSS.escape(el.id)}"]`);
+        if (!hasAriaLabel && !hasTitle && !hasLabel) {
+          warnings.push("Input field is missing an accessible name (label, aria-label, or title)");
+        }
+      }
+      if (tagName === 'a' && !el.textContent?.trim() && !el.hasAttribute('aria-label')) {
+         warnings.push("Empty link without an aria-label");
+      }
+      if (tagName === 'button' && !el.textContent?.trim() && !el.hasAttribute('aria-label')) {
+         warnings.push("Empty button without an aria-label");
+      }
+
       const a11yData = {
         role: el.getAttribute('role'),
         ariaAttributes,
         alt: el.getAttribute('alt'),
         tabIndex: el.tabIndex,
         isFocusable: el.tabIndex >= 0,
-        contrastRatio
+        contrastRatio,
+        warnings
       };
 
       // 8. Typography Data
@@ -713,6 +734,25 @@ export default defineContentScript({
         }
       };
 
+      // 10. Color Palette Data
+      const colorPaletteSet = new Set<string>();
+      try {
+        const elements = [el, ...Array.from(el.querySelectorAll('*'))];
+        for (const node of elements) {
+          if (node instanceof HTMLElement || node instanceof SVGElement) {
+            const compStyle = window.getComputedStyle(node);
+            const props = ['color', 'background-color', 'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color', 'fill', 'stroke'];
+            for (const p of props) {
+              const val = compStyle.getPropertyValue(p);
+              if (val && val !== 'rgba(0, 0, 0, 0)' && val !== 'transparent' && val !== 'none') {
+                colorPaletteSet.add(val);
+              }
+            }
+          }
+        }
+      } catch (e) {}
+      const colorPalette = Array.from(colorPaletteSet);
+
       return {
         tagName,
         id,
@@ -727,7 +767,8 @@ export default defineContentScript({
         frameworkEvents,
         a11yData,
         typographyData,
-        animationData
+        animationData,
+        colorPalette
       };
     }
   },
