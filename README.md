@@ -19,7 +19,7 @@
 
 <br/>
 
-> **Code Anatomy** is a browser extension that gives you **X-ray vision** for any web page. Click any element and instantly see its **HTML structure**, **CSS rules**, **JavaScript event listeners**, and get **AI-powered explanations** — all in a sleek side panel. It's like Chrome DevTools, but designed for **learning** and **understanding**.
+> **Code Anatomy** is a browser extension that gives you **X-ray vision** for any web page. Click any element and instantly see its **HTML structure**, **CSS rules**, **color palette**, **accessibility warnings**, **JavaScript event listeners**, and get **AI-powered explanations** — all in a sleek, collapsible side panel. It's like Chrome DevTools, but designed for **learning** and **understanding**.
 
 <br/>
 
@@ -55,6 +55,16 @@
 <tr>
 <td width="50%">
 
+### 🌈 Color Palette Extractor
+- Deep tree traversal to extract unique colors from the element & its subtree
+- Discovers **backgrounds**, **text colors**, **borders**, and **SVG fills**
+- Visual color swatch cards with **HEX** and **RGB** values
+- **One-click copy** for any color code
+- Categorizes colors by role (Background, Text, Border)
+
+</td>
+<td width="50%">
+
 ### ⚡ JavaScript Connections
 - **Event listeners** on the element (click, input, etc.)
 - **Child element listeners** — events bubbling up
@@ -64,6 +74,8 @@
 - **Scope context** — see the full enclosing function
 
 </td>
+</tr>
+<tr>
 <td width="50%">
 
 ### 🤖 AI-Powered Explanations
@@ -73,6 +85,34 @@
 - Detects **Bootstrap** & **Tailwind** classes automatically
 - **Follow-up chat** — ask deeper questions about the element
 - Markdown-rendered responses with code highlighting
+
+</td>
+<td width="50%">
+
+### ♿ Accessibility & Audit Warnings
+- **Missing Attribute Warnings**: Instantly detects missing `alt` on `<img>`, unlabeled `<input>` fields, and empty links/buttons
+- **WCAG contrast ratio** evaluation with Pass/Fail badges (AA / AAA)
+- **ARIA attributes** breakdown (`role`, `aria-label`, states)
+- **Keyboard navigation**: Tab index & focusability tracking
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+### 📁 Collapsible Accordion Panels
+- Native foldable `<details>` sections with smooth rotating chevrons
+- Quickly fold or unfold sections to skip large chunks of code
+- Non-blocking layout preserves quick access to export and copy actions
+- Clean stacked workflow tailored for side panel viewports
+
+</td>
+<td width="50%">
+
+### 🔤 Typography & ✨ Animations
+- **Typography metrics**: font family, computed size, weight, line-height, letter-spacing
+- **Animation inspector**: active transitions and keyframe animations with duration, timing functions, and iteration counts
+- Inspects both static and dynamically styled elements
 
 </td>
 </tr>
@@ -514,17 +554,21 @@ Code Anatomy
 ├── src/
 │   ├── entrypoints/
 │   │   ├── background.ts          # Service worker: context menus, shortcuts, panel control
-│   │   ├── content.ts             # Element picker: overlay, click handling, CSS extraction
+│   │   ├── content.ts             # Element picker: overlay, click handling, CSS & DOM extraction
 │   │   ├── injected.content.ts    # MAIN world: intercepts addEventListener, querySelector, etc.
 │   │   └── sidepanel/
-│   │       ├── index.html         # Side panel shell
+│   │       ├── index.html         # Side panel shell with collapsible accordion sections
 │   │       ├── main.ts            # Panel orchestrator & settings
-│   │       ├── style.css          # Dark theme design system
+│   │       ├── style.css          # Dark theme design system & accordion styling
 │   │       ├── components/
-│   │       │   ├── html-panel.ts  # HTML viewer with syntax highlighting
-│   │       │   ├── css-panel.ts   # CSS rules, computed styles, pseudo-class forcing
-│   │       │   ├── events-panel.ts # Event listeners, DOM access, manipulations
-│   │       │   └── ai-panel.ts    # Gemini AI summary & follow-up chat
+│   │       │   ├── html-panel.ts        # HTML viewer with syntax highlighting & Sandbox export
+│   │       │   ├── css-panel.ts         # CSS rules, computed styles, pseudo-class forcing
+│   │       │   ├── color-panel.ts       # Color palette extraction & interactive swatches
+│   │       │   ├── events-panel.ts      # Event listeners, DOM access, manipulations
+│   │       │   ├── ai-panel.ts          # Gemini AI summary & follow-up chat
+│   │       │   ├── typography-panel.ts  # Font hierarchy, sizing, line-height & weight
+│   │       │   ├── a11y-panel.ts        # Accessibility audit, contrast & missing attribute warnings
+│   │       │   └── animation-panel.ts   # CSS transitions & keyframe animations
 │   │       └── utils/
 │   │           ├── syntax-highlight.ts   # HTML/CSS/JS syntax coloring
 │   │           └── framework-detector.ts # Bootstrap & Tailwind class detection
@@ -574,9 +618,19 @@ Code Anatomy
 **Computed Styles** — Final resolved values for:
 - Layout: `display`, `position`, `z-index`, `flex-*`, `grid-*`
 - Box Model: `width`, `height`, `margin`, `padding`
-- Typography: `font-family`, `font-size`, `font-weight`, `line-height`
 - Visual: `background`, `color`, `border`, `border-radius`, `box-shadow`, `opacity`
 - Animation: `transform`, `transition`
+
+</details>
+
+<details>
+<summary><strong>Colors Panel</strong></summary>
+
+- **Deep Color Palette Extractor**: Scans the element and all child elements in its DOM subtree
+- Extracts all distinct foreground colors, background colors, borders, and SVG fills
+- **Interactive Swatches**: Shows visual color chips with HEX and RGB values
+- **Role Tags**: Badges distinguishing `Background`, `Text`, and `Border`
+- **One-Click Copy**: Copies color values directly to clipboard
 
 </details>
 
@@ -599,6 +653,36 @@ Code Anatomy
 - Covers: Purpose, Structure, Styling, Framework classes, Accessibility
 - Multi-turn follow-up chat for deeper exploration
 - Markdown rendering with code blocks
+
+</details>
+
+<details>
+<summary><strong>Typography Panel</strong></summary>
+
+- Font family and fallback font stack
+- Computed font size (`px`, `rem`)
+- Font weight and font style (italic, normal)
+- Line height, letter spacing, text transform, and text decoration
+
+</details>
+
+<details>
+<summary><strong>Accessibility Panel</strong></summary>
+
+- **Missing Attribute Warnings**:
+  - `<img>` tags missing `alt` attributes
+  - Form `<input>` elements missing associated labels, `aria-label`, or `aria-labelledby`
+  - Empty links (`<a>`) or buttons (`<button>`) without accessible names
+- **Color Contrast Checker**: Foreground vs background contrast ratio calculation with WCAG AA / AAA badges
+- **ARIA & Semantics**: ARIA `role`, `aria-label`, accessibility attributes, and focusable `tabindex`
+
+</details>
+
+<details>
+<summary><strong>Animations Panel</strong></summary>
+
+- CSS transitions: property names, durations, delay, and timing functions
+- Keyframe animations: animation names, durations, timing functions, iteration count, and direction
 
 </details>
 
