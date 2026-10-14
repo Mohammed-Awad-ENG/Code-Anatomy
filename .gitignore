@@ -28,3 +28,4 @@ web-ext.config.ts
 /test
 test-api.ts
 /Code Anatomy builds
+docs/

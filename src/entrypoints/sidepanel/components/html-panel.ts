@@ -6,10 +6,8 @@ export function renderHtmlPanel(data: ElementData) {
   if (!container) return;
 
   // Pretty print HTML by adding basic indentation based on tags
-  // Since outerHTML might be messy, we do a basic format
   let formattedHtml = data.outerHTML;
   try {
-    // Basic formatting (not robust but okay for quick views)
     formattedHtml = formatHTML(data.outerHTML);
   } catch (e) {
     // fallback
@@ -18,14 +16,17 @@ export function renderHtmlPanel(data: ElementData) {
   const highlighted = highlightHTML(formattedHtml);
 
   container.innerHTML = `
-    <div class="code-block" style="background: var(--bg-primary); padding: 12px; border-radius: 4px; border: 1px solid var(--border); overflow-x: auto; font-family: var(--font-mono); font-size: 13px; line-height: 1.5; white-space: pre;">${highlighted}</div>
-    <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
-      <button id="copy-html-btn" class="btn-secondary">Copy HTML</button>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+      <div style="font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.5px;">HTML Structure</div>
+      <button id="copy-html-btn" class="btn-secondary" style="padding: 3px 10px; font-size: 11px;">Copy HTML</button>
     </div>
+    <div class="code-block" style="background: var(--bg-primary); padding: 12px; border-radius: 4px; border: 1px solid var(--border); overflow-x: auto; font-family: var(--font-mono); font-size: 13px; line-height: 1.5; white-space: pre;">${highlighted}</div>
   `;
 
   document.getElementById('copy-html-btn')?.addEventListener('click', (e) => {
-    navigator.clipboard.writeText(formattedHtml);
+    // Copy clean HTML (sandboxHTML or outerHTML stripped of visual pseudo tokens)
+    const cleanToCopy = data.sandboxHTML || formattedHtml.replace(/\s*::(before|after|marker|placeholder)\b/g, '');
+    navigator.clipboard.writeText(cleanToCopy);
     const btn = e.target as HTMLButtonElement;
     btn.textContent = 'Copied ✓';
     setTimeout(() => { btn.textContent = 'Copy HTML'; }, 2000);
@@ -37,8 +38,9 @@ export function renderHtmlPanel(data: ElementData) {
   
   if (codepenForm && codepenDataInput) {
     let cssText = '';
+    const baseSel = `${data.tagName.toLowerCase()}${data.id ? '#' + data.id : ''}${data.classes.length > 0 ? '.' + data.classes[0] : ''}`;
     
-    // Add all matched rules
+    // 1. Add all matched rules
     data.matchedRules.forEach(rule => {
       const ruleBlock = `${rule.selector} { ${rule.cssText} }`;
       if (rule.media) {
@@ -48,24 +50,72 @@ export function renderHtmlPanel(data: ElementData) {
       }
     });
 
-    // Add all pseudo rules
+    // 2. Add all pseudo rules (pseudo-classes)
     data.pseudoRules.forEach(rule => {
       const ruleBlock = `${rule.selector} { ${rule.cssText} }`;
-      if (rule.media) {
-        cssText += `@media ${rule.media} { ${ruleBlock} }\n`;
-      } else {
-        cssText += `${ruleBlock}\n`;
-      }
-    });
-
-    // Add descendant rules
-    if (data.descendantRules) {
-      data.descendantRules.forEach(rule => {
-        const ruleBlock = `${rule.selector} { ${rule.cssText} }`;
+      if (!cssText.includes(ruleBlock)) {
         if (rule.media) {
           cssText += `@media ${rule.media} { ${ruleBlock} }\n`;
         } else {
           cssText += `${ruleBlock}\n`;
+        }
+      }
+    });
+
+    // 3. Add pseudo-element rules and synthesize missing active pseudo rules
+    if (data.pseudoElements) {
+      for (const [key, pe] of Object.entries(data.pseudoElements)) {
+        if (!pe) continue;
+        const pseudoName = key.startsWith(':') ? key : `::${key}`;
+
+        // Add authored rules
+        if (pe.matchedRules && pe.matchedRules.length > 0) {
+          pe.matchedRules.forEach(rule => {
+            const ruleBlock = `${rule.selector} { ${rule.cssText} }`;
+            if (!cssText.includes(ruleBlock)) {
+              if (rule.media) {
+                cssText += `@media ${rule.media} { ${ruleBlock} }\n`;
+              } else {
+                cssText += `${ruleBlock}\n`;
+              }
+            }
+          });
+        }
+
+        // If pseudo-element is active in DOM, verify that specific styles for this element exist in cssText.
+        // If not present, synthesize the rule so CodePen renders it completely!
+        const hasSpecificAuthoredRule = cssText.includes(`${baseSel}${pseudoName}`) || cssText.includes(`${baseSel}:${key}`);
+        if (pe.exists && !hasSpecificAuthoredRule) {
+          const props = Object.entries(pe.computedStyles)
+            .map(([prop, val]) => `  ${prop}: ${val};`)
+            .join('\n');
+          if (props) {
+            cssText += `\n/* Active ${pseudoName} Styles */\n${baseSel}${pseudoName} {\n${props}\n}\n`;
+          }
+        }
+      }
+    }
+
+    // 4. Add descendant rules
+    if (data.descendantRules) {
+      data.descendantRules.forEach(rule => {
+        const ruleBlock = `${rule.selector} { ${rule.cssText} }`;
+        if (!cssText.includes(ruleBlock)) {
+          if (rule.media) {
+            cssText += `@media ${rule.media} { ${ruleBlock} }\n`;
+          } else {
+            cssText += `${ruleBlock}\n`;
+          }
+        }
+      });
+    }
+
+    // 5. Add Shadow Root styles (<style> tags from shadow DOM)
+    if (data.shadowStyles && data.shadowStyles.length > 0) {
+      data.shadowStyles.forEach(st => {
+        const clean = st.trim();
+        if (clean && !cssText.includes(clean)) {
+          cssText += `\n/* Shadow Root Styles */\n${clean}\n`;
         }
       });
     }
@@ -80,7 +130,7 @@ export function renderHtmlPanel(data: ElementData) {
       anyData.listeners.forEach((l: any) => {
         jsText += `rootElement?.addEventListener('${l.type}', function(event) {\n`;
         jsText += `  /* Original Source (${l.functionName}):\n`;
-        const lines = (l.sourcePreview || '').split('\\n');
+        const lines = (l.sourcePreview || '').split('\n');
         lines.forEach((line: string) => {
           jsText += `     ${line}\n`;
         });
@@ -95,12 +145,11 @@ export function renderHtmlPanel(data: ElementData) {
         jsText += `const rootElement = document.body.firstElementChild;\n\n`;
       }
       anyData.childListeners.forEach((l: any) => {
-        // Safe query selector string
-        const safeTarget = (l.targetLabel || '').replace(/"/g, '\\\\\"');
+        const safeTarget = (l.targetLabel || '').replace(/"/g, '\\"');
         jsText += `// Target: ${l.targetLabel}\n`;
         jsText += `rootElement?.querySelector("${safeTarget}")?.addEventListener('${l.type}', function(event) {\n`;
         jsText += `  /* Original Source (${l.functionName}):\n`;
-        const lines = (l.sourcePreview || '').split('\\n');
+        const lines = (l.sourcePreview || '').split('\n');
         lines.forEach((line: string) => {
           jsText += `     ${line}\n`;
         });
@@ -115,10 +164,13 @@ export function renderHtmlPanel(data: ElementData) {
                `// might rely on external scope or frameworks (React/Vue/etc).\n\n` + jsText;
     }
 
+    // HTML to send to CodePen (uses sandboxHTML if available to unpack shadow DOM)
+    const htmlToSend = data.sandboxHTML || formattedHtml.replace(/\s*::(before|after|marker|placeholder)\b/g, '');
+
     const penData = {
       title: "Code Anatomy Export",
       description: "Exported from Code Anatomy browser extension",
-      html: formattedHtml,
+      html: htmlToSend,
       css: cssText,
       js: jsText
     };

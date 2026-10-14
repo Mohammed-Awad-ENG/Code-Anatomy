@@ -30,10 +30,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 function handleElementSelected(data: ElementData) {
-  // Update header
+  // Update header with tag name, ID, and pseudo-element indicators
   const header = document.getElementById('selected-element-name');
   if (header) {
-    header.innerHTML = `&lt;${data.tagName}&gt;${data.id ? `<span style="color: var(--syntax-attr)">#${data.id}</span>` : ''}`;
+    let pseudoBadges = '';
+    if (data.pseudoElements) {
+      const colors: Record<string, string> = { before: '#F9A8D4', after: '#7DD3FC', marker: '#A78BFA', placeholder: '#FCD34D' };
+      for (const [key, pe] of Object.entries(data.pseudoElements)) {
+        if (!pe) continue;
+        const hasSpecificRule = pe.matchedRules.some(r => !r.selector.trim().startsWith('*') && !r.selector.trim().startsWith('::'));
+        if (pe.exists || hasSpecificRule) {
+          const pseudoName = key.startsWith(':') ? key : `::${key}`;
+          const color = colors[key] || '#C084FC';
+          pseudoBadges += `<span style="font-size: 10px; color: ${color}; background: ${color}15; border: 1px solid ${color}40; padding: 1px 6px; border-radius: 4px; margin-left: 6px; font-weight: normal; vertical-align: middle; font-family: var(--font-mono); font-style: normal;">${pseudoName}</span>`;
+        }
+      }
+    }
+    header.innerHTML = `&lt;${data.tagName}&gt;${data.id ? `<span style="color: var(--syntax-attr)">#${data.id}</span>` : ''}${pseudoBadges}`;
   }
   
   const attrs = document.getElementById('selected-element-attrs');
@@ -42,9 +55,8 @@ function handleElementSelected(data: ElementData) {
     attrs.textContent = classStr;
   }
   
-  // Hide empty states in panels
-  document.querySelectorAll('.empty-state').forEach(el => {
-    // Only hide if we actually have panels (except AI which has its own logic)
+  // Hide initial placeholder empty states in panels
+  document.querySelectorAll('.panel-body > .empty-state').forEach(el => {
     if (!el.parentElement?.closest('#ai-panel')) {
       el.classList.add('hidden');
     }

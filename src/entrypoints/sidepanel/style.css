@@ -62,6 +62,18 @@ body {
   background-color: var(--bg-secondary);
 }
 
+/* Pseudo-element indicators and tokens (no background, no italic) */
+.syntax-pseudo-before,
+.syntax-pseudo-after,
+.syntax-pseudo-other,
+.pseudo-tag,
+.pseudo-pill {
+  font-style: normal !important;
+  background: transparent !important;
+  border: none !important;
+  font-weight: 600;
+}
+
 .element-header {
   display: flex;
   align-items: center;

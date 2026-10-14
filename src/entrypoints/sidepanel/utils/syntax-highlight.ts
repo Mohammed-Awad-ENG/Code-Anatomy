@@ -23,6 +23,16 @@ export function highlightHTML(html: string): string {
     .replace(/%%VAL%%/g, '<span class="syntax-value">')
     .replace(/%%END%%/g, '</span>');
 
+  // Highlight HTML Comments (e.g. <!-- #shadow-root (open) -->)
+  highlighted = highlighted.replace(/(&lt;!--[\s\S]*?--&gt;)/g, '<span style="color: var(--text-tertiary); font-style: italic;">$1</span>');
+
+  // Highlight pseudo-elements ::before, ::after, and all pseudo-elements (no background, no italic)
+  highlighted = highlighted
+    .replace(/::before/g, '<span class="syntax-pseudo-before" style="color: #F9A8D4; font-weight: 600; font-style: normal; background: none; border: none;">::before</span>')
+    .replace(/::after/g, '<span class="syntax-pseudo-after" style="color: #7DD3FC; font-weight: 600; font-style: normal; background: none; border: none;">::after</span>')
+    .replace(/::(marker|placeholder|selection|first-letter|first-line|backdrop|file-selector-button)/g, '<span class="syntax-pseudo-other" style="color: #C678DD; font-weight: 600; font-style: normal; background: none; border: none;">::$1</span>')
+    .replace(/(::-webkit-[a-zA-Z0-9_-]+|::-moz-[a-zA-Z0-9_-]+)/g, '<span class="syntax-pseudo-other" style="color: #C678DD; font-weight: 600; font-style: normal; background: none; border: none;">$1</span>');
+
   return highlighted;
 }
 

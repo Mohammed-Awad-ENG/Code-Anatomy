@@ -163,21 +163,39 @@ export default defineContentScript({
       overlay.style.display = 'block';
     }
 
+    function getDeepTarget(e: MouseEvent): HTMLElement | null {
+      // 1. Try composedPath first
+      if (typeof e.composedPath === 'function') {
+        const path = e.composedPath();
+        for (const item of path) {
+          if (item instanceof HTMLElement && item.id !== 'code-anatomy-overlay' && item.id !== 'code-anatomy-iframe-tooltip' && item !== fab) {
+            return item;
+          }
+        }
+      }
+
+      // 2. Try recursive shadowRoot drilling at point
+      let el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
+      while (el && el.shadowRoot) {
+        const deep = el.shadowRoot.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
+        if (!deep || deep === el) break;
+        el = deep;
+      }
+      if (el && el.id !== 'code-anatomy-overlay' && el.id !== 'code-anatomy-iframe-tooltip' && el !== fab) {
+        return el;
+      }
+
+      return (e.target as HTMLElement) || null;
+    }
+
     function onMouseOver(e: MouseEvent) {
       if (!isActive) return;
-      let target = e.target as HTMLElement;
+      const target = getDeepTarget(e);
+      if (!target) return;
       
       // Ignore extension UI elements
       if (target.id === 'code-anatomy-overlay' || target.id === 'code-anatomy-iframe-tooltip') return;
       if (target === fab) return;
-      
-      // Shadow DOM: if we're inside a shadow root, use the composed path to get the actual target
-      if (e.composedPath && e.composedPath().length > 0) {
-        const deepTarget = e.composedPath()[0] as HTMLElement;
-        if (deepTarget && deepTarget !== target && deepTarget instanceof HTMLElement) {
-          target = deepTarget;
-        }
-      }
       
       // Iframe awareness: show tooltip for iframes
       if (target.tagName === 'IFRAME') {
@@ -195,13 +213,14 @@ export default defineContentScript({
     }
 
     async function onClick(e: MouseEvent) {
-      if (!isActive || !hoveredElement) return;
+      if (!isActive) return;
       
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
       
-      const el = hoveredElement;
+      const el = getDeepTarget(e) || hoveredElement;
+      if (!el) return;
       
       // If clicking on a same-origin iframe, drill into it instead of inspecting the iframe element
       if (el.tagName === 'IFRAME') {
@@ -388,12 +407,123 @@ export default defineContentScript({
         attributes[attr.name] = attr.value;
       }
       
-      // 3. HTML (truncated depth for sanity)
-      // For now, full outerHTML, we'll format it in the sidebar
-      let outerHTML = el.outerHTML;
-      if (outerHTML.length > 5000) {
-        outerHTML = outerHTML.substring(0, 5000) + '\n<!-- HTML truncated due to length -->';
+      // 3. HTML Serialization (with Shadow DOM and ::before / ::after support)
+      function serializeElementWithPseudosAndShadow(targetEl: HTMLElement): {
+        displayHTML: string;
+        sandboxHTML: string;
+        shadowStyles: string[];
+      } {
+        const shadowStyles: string[] = [];
+
+        const checkPseudos = (node: HTMLElement) => {
+          let hasBefore = false;
+          let hasAfter = false;
+          if (node === targetEl && typeof pseudoElements !== 'undefined') {
+            hasBefore = Boolean(pseudoElements.before?.exists);
+            hasAfter = Boolean(pseudoElements.after?.exists);
+          } else {
+            try {
+              const bComp = window.getComputedStyle(node, '::before');
+              const bContent = bComp.getPropertyValue('content');
+              hasBefore = Boolean(bContent && bContent !== 'none' && bContent !== 'normal' && bContent.trim() !== '');
+
+              const aComp = window.getComputedStyle(node, '::after');
+              const aContent = aComp.getPropertyValue('content');
+              hasAfter = Boolean(aContent && aContent !== 'none' && aContent !== 'normal' && aContent.trim() !== '');
+            } catch (e) {}
+          }
+          return { hasBefore, hasAfter };
+        };
+
+        const serializeNode = (node: HTMLElement): { display: string; sandbox: string } => {
+          const shadow = node.shadowRoot;
+          const { hasBefore, hasAfter } = checkPseudos(node);
+          const tag = node.tagName.toLowerCase();
+
+          // Build attributes string (excluding internal data attributes)
+          const attrs: string[] = [];
+          for (const attr of Array.from(node.attributes)) {
+            if (!attr.name.startsWith('data-ca-') && !attr.name.startsWith('data-code-anatomy-')) {
+              attrs.push(`${attr.name}="${attr.value.replace(/"/g, '&quot;')}"`);
+            }
+          }
+          const attrStr = attrs.length > 0 ? ' ' + attrs.join(' ') : '';
+          const openTag = `<${tag}${attrStr}>`;
+          const closeTag = `</${tag}>`;
+
+          // Void HTML elements
+          if (['img', 'input', 'br', 'hr', 'meta', 'link'].includes(tag)) {
+            return { display: `<${tag}${attrStr} />`, sandbox: `<${tag}${attrStr} />` };
+          }
+
+          let displayKids = '';
+          let sandboxKids = '';
+
+          // If node has shadowRoot (open)
+          if (shadow) {
+            // Extract <style> contents from shadow DOM
+            const styles = shadow.querySelectorAll('style');
+            styles.forEach(s => {
+              if (s.textContent && s.textContent.trim()) {
+                shadowStyles.push(s.textContent.trim());
+              }
+            });
+
+            displayKids += `\n  <!-- #shadow-root (open) -->`;
+            for (const child of Array.from(shadow.children)) {
+              if (child instanceof HTMLElement) {
+                if (child.tagName !== 'STYLE') {
+                  const res = serializeNode(child);
+                  displayKids += '\n  ' + res.display.split('\n').join('\n  ');
+                  sandboxKids += '\n  ' + res.sandbox.split('\n').join('\n  ');
+                } else {
+                  const styleEl = child as HTMLStyleElement;
+                  displayKids += `\n  <style>/* ${styleEl.sheet?.cssRules.length || 0} shadow rules */</style>`;
+                }
+              }
+            }
+          } else {
+            // Normal element: inject ::before marker if active in DOM
+            if (hasBefore) {
+              displayKids += '\n  ::before';
+            }
+
+            for (const child of Array.from(node.childNodes)) {
+              if (child.nodeType === Node.ELEMENT_NODE && child instanceof HTMLElement) {
+                const res = serializeNode(child);
+                displayKids += '\n  ' + res.display.split('\n').join('\n  ');
+                sandboxKids += '\n  ' + res.sandbox.split('\n').join('\n  ');
+              } else if (child.nodeType === Node.TEXT_NODE) {
+                const text = child.textContent?.trim();
+                if (text) {
+                  displayKids += '\n  ' + text;
+                  sandboxKids += '\n  ' + text;
+                }
+              }
+            }
+
+            // Inject ::after marker if active in DOM
+            if (hasAfter) {
+              displayKids += '\n  ::after';
+            }
+          }
+
+          if (displayKids) displayKids += '\n';
+          if (sandboxKids) sandboxKids += '\n';
+
+          return {
+            display: `${openTag}${displayKids}${closeTag}`,
+            sandbox: `${openTag}${sandboxKids}${closeTag}`
+          };
+        };
+
+        const { display, sandbox } = serializeNode(targetEl);
+        return { displayHTML: display, sandboxHTML: sandbox, shadowStyles };
       }
+
+      let outerHTML = '';
+      let sandboxHTML = '';
+      let shadowStyles: string[] = [];
 
       // 4. Computed Styles (filtered)
       const computed = window.getComputedStyle(el);
@@ -421,14 +551,93 @@ export default defineContentScript({
         }
       }
 
-      // 5. Authored Rules
+      // 5. Authored Rules & Pseudo Elements/Classes Detection
       const matchedRules: { selector: string; cssText: string; media?: string }[] = [];
-      const pseudoRules: { selector: string; cssText: string; pseudoClass: string; media?: string }[] = [];
+      const pseudoRules: { selector: string; cssText: string; pseudoClass: string; media?: string; pseudoElement?: string; isMatching?: boolean }[] = [];
       const descendantRules: { selector: string; cssText: string; media?: string }[] = [];
+
+      function extractPseudoElementInfo(targetEl: HTMLElement, pseudoName: string) {
+        const rules: { selector: string; cssText: string; media?: string }[] = [];
+        try {
+          const comp = window.getComputedStyle(targetEl, pseudoName);
+          const content = comp.getPropertyValue('content');
+          const cleanName = pseudoName.replace(/^:+/, '').toLowerCase();
+          const hasContent = Boolean(content && content !== 'none' && content !== 'normal' && content.trim() !== '');
+          
+          let exists = false;
+          if (cleanName === 'before' || cleanName === 'after') {
+            exists = hasContent;
+          } else if (cleanName === 'marker') {
+            const display = window.getComputedStyle(targetEl).display;
+            exists = display === 'list-item' || hasContent;
+          } else if (cleanName.includes('placeholder')) {
+            exists = (targetEl.tagName === 'INPUT' || targetEl.tagName === 'TEXTAREA') && Boolean((targetEl as HTMLInputElement).placeholder);
+          } else {
+            exists = hasContent;
+          }
+
+          const compStyles: Record<string, string> = {};
+          const keyProps = [
+            'content', 'display', 'position', 'top', 'right', 'bottom', 'left', 'inset', 'z-index',
+            'width', 'height', 'min-width', 'max-width', 'min-height', 'max-height', 'box-sizing',
+            'margin-top', 'margin-right', 'margin-bottom', 'margin-left',
+            'padding-top', 'padding-right', 'padding-bottom', 'padding-left',
+            'background-color', 'background-image', 'background-size', 'background-position', 'background-repeat',
+            'color', 'font-family', 'font-size', 'font-weight', 'line-height', 'letter-spacing', 'text-align', 'text-transform', 'text-decoration',
+            'border-top-width', 'border-top-style', 'border-top-color',
+            'border-right-width', 'border-right-style', 'border-right-color',
+            'border-bottom-width', 'border-bottom-style', 'border-bottom-color',
+            'border-left-width', 'border-left-style', 'border-left-color',
+            'border-radius', 'outline', 'box-shadow', 'opacity', 'visibility',
+            'transform', 'transform-origin', 'transition', 'animation',
+            'cursor', 'pointer-events', 'overflow', 'filter', 'backdrop-filter',
+            'flex-direction', 'justify-content', 'align-items', 'gap'
+          ];
+          for (const prop of keyProps) {
+            const val = comp.getPropertyValue(prop);
+            if (val && val !== 'none' && val !== 'normal' && val !== 'auto' && val !== 'rgba(0, 0, 0, 0)' && val !== '0px' && val !== 'matrix(1, 0, 0, 1, 0, 0)') {
+              compStyles[prop] = val;
+            }
+          }
+
+          return {
+            exists,
+            content: hasContent ? (content || '""') : 'none',
+            computedStyles: compStyles,
+            matchedRules: rules
+          };
+        } catch (e) {
+          return {
+            exists: false,
+            content: 'none',
+            computedStyles: {},
+            matchedRules: rules
+          };
+        }
+      }
+
+      // Initialize pseudo-elements information
+      const pseudoElements: Record<string, ReturnType<typeof extractPseudoElementInfo>> = {
+        before: extractPseudoElementInfo(el, '::before'),
+        after: extractPseudoElementInfo(el, '::after'),
+        marker: extractPseudoElementInfo(el, '::marker'),
+        placeholder: extractPseudoElementInfo(el, '::placeholder')
+      };
+
+      // Known interaction & state pseudo-classes
       const interactionPseudos = [
         ':hover', ':focus', ':active', ':focus-within', ':focus-visible', ':target',
-        ':visited', ':checked', ':disabled', ':enabled', ':read-only', ':read-write',
-        ':valid', ':invalid', ':in-range', ':out-of-range', ':required', ':optional'
+        ':visited', ':link', ':any-link',
+        ':checked', ':disabled', ':enabled', ':read-only', ':read-write',
+        ':placeholder-shown', ':default', ':indeterminate', ':required', ':optional',
+        ':valid', ':invalid', ':in-range', ':out-of-range', ':autofill', ':-webkit-autofill'
+      ];
+
+      // Structural pseudo-classes
+      const structuralPseudos = [
+        ':first-child', ':last-child', ':only-child',
+        ':first-of-type', ':last-of-type', ':only-of-type',
+        ':empty', ':root'
       ];
 
       function processRule(rule: CSSStyleRule, mediaText?: string) {
@@ -450,31 +659,58 @@ export default defineContentScript({
         if (current) selectors.push(current.trim());
 
         for (const selector of selectors) {
-          let isPseudo = false;
-          let detectedPseudos: string[] = [];
+          let detectedPseudoElement: string | undefined;
+          const detectedPseudos: string[] = [];
           let baseSelector = selector;
 
-          // Strip all interaction pseudo-classes
+          // 1. Detect and normalize pseudo-elements (both :: and legacy single-colon :)
+          const peMatch = baseSelector.match(/(?:::|:)(before|after|first-letter|first-line|placeholder|marker|selection|backdrop|file-selector-button)\b/i);
+          if (peMatch && peMatch[1]) {
+            detectedPseudoElement = `::${peMatch[1].toLowerCase()}`;
+          } else {
+            const vendorPe = baseSelector.match(/(::-webkit-[a-zA-Z0-9_-]+|::-moz-[a-zA-Z0-9_-]+)/i);
+            if (vendorPe && vendorPe[1]) {
+              detectedPseudoElement = vendorPe[1];
+            }
+          }
+
+          // 2. Detect interaction/state pseudo-classes
           for (const pseudo of interactionPseudos) {
             if (baseSelector.includes(pseudo)) {
-              isPseudo = true;
               detectedPseudos.push(pseudo);
               baseSelector = baseSelector.replace(new RegExp(pseudo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), '');
             }
           }
-          
-          // Strip ALL pseudo-elements (both :: and legacy : variants)
-          // This prevents DOMExceptions in matches()
+
+          // 3. Detect structural pseudo-classes
+          for (const pseudo of structuralPseudos) {
+            if (baseSelector.includes(pseudo)) {
+              detectedPseudos.push(pseudo);
+              baseSelector = baseSelector.replace(new RegExp(pseudo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), '');
+            }
+          }
+
+          // 4. Detect functional pseudo-classes like :nth-child(...), :not(...)
+          const functionalMatches = baseSelector.match(/:(nth-child|nth-last-child|nth-of-type|nth-last-of-type|not|is|where|has)\([^)]+\)/gi);
+          if (functionalMatches) {
+            for (const fnPseudo of functionalMatches) {
+              detectedPseudos.push(fnPseudo);
+              baseSelector = baseSelector.replace(fnPseudo, '');
+            }
+          }
+
+          // 5. Strip all pseudo-elements to form baseSelector for matches()
           baseSelector = baseSelector
             .replace(/::[a-zA-Z0-9_-]+/g, '')
-            .replace(/:(before|after|first-letter|first-line)\b/g, '')
+            .replace(/:(before|after|first-letter|first-line)\b/gi, '')
             .replace(/:-webkit-[a-zA-Z0-9_-]+/g, '')
             .replace(/:-moz-[a-zA-Z0-9_-]+/g, '')
             .replace(/:-ms-[a-zA-Z0-9_-]+/g, '')
-            .replace(/:-o-[a-zA-Z0-9_-]+/g, '');
+            .replace(/:-o-[a-zA-Z0-9_-]+/g, '')
+            .trim();
 
           if (!baseSelector || baseSelector === '*') {
-             if (!baseSelector) continue;
+            if (!baseSelector) continue;
           }
 
           try {
@@ -483,24 +719,91 @@ export default defineContentScript({
 
             if (matchesSelf || matchesDescendant) {
               const cleanCssText = rule.style.cssText;
-              
               if (!cleanCssText) continue;
 
               if (matchesSelf) {
-                if (isPseudo) {
-                  // Emit one pseudoRule per detected state so each state
-                  // can be independently toggled without invalid attribute names
-                  for (const pseudo of detectedPseudos) {
-                    pseudoRules.push({
-                      selector: selector,
+                // If it targets a pseudo-element
+                if (detectedPseudoElement) {
+                  const peKey = detectedPseudoElement.replace(/^:+/, '').toLowerCase();
+                  if (!pseudoElements[peKey]) {
+                    pseudoElements[peKey] = extractPseudoElementInfo(el, detectedPseudoElement);
+                  }
+                  const pe = pseudoElements[peKey];
+                  if (pe) {
+                    // Check if authored rule specifies content
+                    const contentMatch = cleanCssText.match(/(?:^|;)\s*content\s*:\s*([^;]+)/i);
+                    if (contentMatch && contentMatch[1]) {
+                      const authoredContent = contentMatch[1].trim();
+                      if (authoredContent !== 'none' && authoredContent !== 'normal') {
+                        pe.exists = true;
+                        if (pe.content === 'none') {
+                          pe.content = authoredContent;
+                        }
+                        pe.computedStyles['content'] = authoredContent;
+                      }
+                    }
+
+                    // Capture authored declarations into pe.computedStyles if not set
+                    cleanCssText.split(';').forEach(decl => {
+                      const colonIdx = decl.indexOf(':');
+                      if (colonIdx > 0) {
+                        const prop = decl.substring(0, colonIdx).trim();
+                        const val = decl.substring(colonIdx + 1).trim();
+                        if (prop && val && !pe.computedStyles[prop]) {
+                          pe.computedStyles[prop] = val;
+                        }
+                      }
+                    });
+
+                    pe.matchedRules.push({
+                      selector,
                       cssText: cleanCssText,
-                      pseudoClass: pseudo,
                       media: mediaText
                     });
                   }
+
+                  // If it also has interaction/state pseudo-classes (e.g. .btn:hover::before)
+                  if (detectedPseudos.length > 0) {
+                    for (const pseudo of detectedPseudos) {
+                      pseudoRules.push({
+                        selector,
+                        cssText: cleanCssText,
+                        pseudoClass: pseudo,
+                        pseudoElement: detectedPseudoElement,
+                        media: mediaText
+                      });
+                    }
+                  } else {
+                    // Static pseudo-element rule (e.g. .btn::before or .btn:before)
+                    pseudoRules.push({
+                      selector,
+                      cssText: cleanCssText,
+                      pseudoClass: detectedPseudoElement,
+                      pseudoElement: detectedPseudoElement,
+                      media: mediaText,
+                      isMatching: true
+                    });
+                  }
+                } else if (detectedPseudos.length > 0) {
+                  // Element with pseudo-classes (e.g. :hover, :focus, :first-child)
+                  for (const pseudo of detectedPseudos) {
+                    let isMatching = false;
+                    try {
+                      isMatching = el.matches(selector);
+                    } catch (e) {}
+
+                    pseudoRules.push({
+                      selector,
+                      cssText: cleanCssText,
+                      pseudoClass: pseudo,
+                      media: mediaText,
+                      isMatching
+                    });
+                  }
                 } else {
+                  // Standard authored matched rule
                   matchedRules.push({
-                    selector: selector,
+                    selector,
                     cssText: cleanCssText,
                     media: mediaText
                   });
@@ -509,14 +812,14 @@ export default defineContentScript({
 
               if (matchesDescendant) {
                 descendantRules.push({
-                  selector: selector,
+                  selector,
                   cssText: cleanCssText,
                   media: mediaText
                 });
               }
             }
           } catch (e) {
-            // Silently ignore if matches() fails on a complex unstripped selector
+            // Ignore complex unstripped selectors that fail in matches()
           }
         }
       }
@@ -567,10 +870,42 @@ export default defineContentScript({
       // Scan the main document
       scanStyleSheets(document);
       
-      // If the element lives inside a shadow root, also scan its shadow stylesheets
+      // If the element lives inside a shadow root, scan its stylesheets and <style> tags
       const rootNode = el.getRootNode();
       if (rootNode instanceof ShadowRoot) {
         scanStyleSheets(rootNode);
+        rootNode.querySelectorAll('style').forEach(st => {
+          if (st.sheet) {
+            try { walkRules(st.sheet.cssRules); } catch (e) {}
+          }
+        });
+      }
+
+      // If the element itself is a shadow host, scan its shadow stylesheets and <style> tags
+      if (el.shadowRoot) {
+        scanStyleSheets(el.shadowRoot);
+        el.shadowRoot.querySelectorAll('style').forEach(st => {
+          if (st.sheet) {
+            try { walkRules(st.sheet.cssRules); } catch (e) {}
+          }
+        });
+      }
+
+      // Clean up pseudo-elements: prune empty non-standard ones that have no rules and do not exist
+      for (const [k, pe] of Object.entries(pseudoElements)) {
+        if (!pe) continue;
+        if (k !== 'before' && k !== 'after' && !pe.exists && pe.matchedRules.length === 0) {
+          delete pseudoElements[k];
+        }
+      }
+
+      // Serialize element HTML and Shadow DOM with confirmed pseudo-element states
+      const serialized = serializeElementWithPseudosAndShadow(el);
+      outerHTML = serialized.displayHTML;
+      sandboxHTML = serialized.sandboxHTML;
+      shadowStyles = serialized.shadowStyles;
+      if (outerHTML.length > 8000) {
+        outerHTML = outerHTML.substring(0, 8000) + '\n<!-- HTML truncated due to length -->';
       }
 
       // Generate force styles dynamically
@@ -586,12 +921,20 @@ export default defineContentScript({
       
       let fullInjectedCSS = '';
       for (const rule of pseudoRules) {
-        let pseudoElement = '';
-        const peMatch = rule.selector.match(/::[a-zA-Z0-9_-]+/);
-        if (peMatch) pseudoElement = peMatch[0];
+        const stateName = rule.pseudoClass.replace(/^:+/, '');
+        // Do not inject static pseudo-elements as force states
+        if (stateName === 'before' || stateName === 'after' || stateName === 'marker' || stateName === 'placeholder') {
+          continue;
+        }
+
+        let pseudoElement = rule.pseudoElement || '';
+        if (!pseudoElement) {
+          const peMatch = rule.selector.match(/(?:::|:)(before|after|first-letter|first-line|placeholder|marker|selection|backdrop)\b/i);
+          if (peMatch && peMatch[1]) {
+            pseudoElement = `::${peMatch[1].toLowerCase()}`;
+          }
+        }
         
-        // pseudoClass is now always a single state like ":hover" (no spaces)
-        const stateName = rule.pseudoClass.replace(/^:/, '');
         fullInjectedCSS += `[data-ca-force-${stateName}="true"][data-ca-id="${uniqueId}"]${pseudoElement} { ${rule.cssText} !important; }\n`;
       }
       forceStyleEl.textContent = fullInjectedCSS;
@@ -631,7 +974,10 @@ export default defineContentScript({
             v /= 255;
             return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
           });
-          return a[0] * 0.2126 + a[1] * 0.7152 + a[2] * 0.0722;
+          const a0 = a[0] ?? 0;
+          const a1 = a[1] ?? 0;
+          const a2 = a[2] ?? 0;
+          return a0 * 0.2126 + a1 * 0.7152 + a2 * 0.0722;
         };
         
         let bgNode: HTMLElement | null = el;
@@ -639,9 +985,9 @@ export default defineContentScript({
         while (bgNode) {
           const bg = window.getComputedStyle(bgNode).backgroundColor;
           const match = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
-          if (match && (match[4] === undefined || parseFloat(match[4]) > 0)) {
+          if (match && match[1] && match[2] && match[3]) {
             const alpha = match[4] ? parseFloat(match[4]) : 1;
-            bgRgba = [parseInt(match[1]), parseInt(match[2]), parseInt(match[3]), alpha];
+            bgRgba = [parseInt(match[1], 10), parseInt(match[2], 10), parseInt(match[3], 10), alpha];
             if (alpha === 1) break;
           }
           bgNode = bgNode.parentElement;
@@ -649,9 +995,9 @@ export default defineContentScript({
         
         const fg = computed.color;
         const fgMatch = fg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-        if (fgMatch) {
-          const lum1 = getLum(bgRgba[0], bgRgba[1], bgRgba[2]);
-          const lum2 = getLum(parseInt(fgMatch[1]), parseInt(fgMatch[2]), parseInt(fgMatch[3]));
+        if (fgMatch && fgMatch[1] && fgMatch[2] && fgMatch[3]) {
+          const lum1 = getLum(bgRgba[0] ?? 255, bgRgba[1] ?? 255, bgRgba[2] ?? 255);
+          const lum2 = getLum(parseInt(fgMatch[1], 10), parseInt(fgMatch[2], 10), parseInt(fgMatch[3], 10));
           const brightest = Math.max(lum1, lum2);
           const darkest = Math.min(lum1, lum2);
           contrastRatio = (brightest + 0.05) / (darkest + 0.05);
@@ -734,24 +1080,221 @@ export default defineContentScript({
         }
       };
 
-      // 10. Color Palette Data
-      const colorPaletteSet = new Set<string>();
-      try {
-        const elements = [el, ...Array.from(el.querySelectorAll('*'))];
-        for (const node of elements) {
-          if (node instanceof HTMLElement || node instanceof SVGElement) {
-            const compStyle = window.getComputedStyle(node);
-            const props = ['color', 'background-color', 'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color', 'fill', 'stroke'];
-            for (const p of props) {
-              const val = compStyle.getPropertyValue(p);
-              if (val && val !== 'rgba(0, 0, 0, 0)' && val !== 'transparent' && val !== 'none') {
-                colorPaletteSet.add(val);
+      // 10. Comprehensive Color Palette Extraction (with Roles, HEX, and RGB)
+      interface ColorAccumulator {
+        hex: string;
+        rgb: string;
+        alpha: number;
+        roles: Set<string>;
+      }
+      const colorMap = new Map<string, ColorAccumulator>();
+
+      function parseColor(rawColor: string): { hex: string; rgb: string; alpha: number } | null {
+        if (!rawColor) return null;
+        const s = rawColor.trim();
+        if (s === 'transparent' || s === 'rgba(0, 0, 0, 0)' || s === 'none') return null;
+
+        // rgb(r, g, b) or rgba(r, g, b, a)
+        const rgbMatch = s.match(/^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*([\d.]+))?\s*\)$/i);
+        if (rgbMatch && rgbMatch[1] && rgbMatch[2] && rgbMatch[3]) {
+          const r = Math.round(parseFloat(rgbMatch[1]));
+          const g = Math.round(parseFloat(rgbMatch[2]));
+          const b = Math.round(parseFloat(rgbMatch[3]));
+          const a = rgbMatch[4] !== undefined ? parseFloat(rgbMatch[4]) : 1;
+          if (a <= 0.001) return null;
+
+          const toHex = (n: number) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, '0').toUpperCase();
+          const hex = a >= 0.999 ? `#${toHex(r)}${toHex(g)}${toHex(b)}` : `#${toHex(r)}${toHex(g)}${toHex(b)}${toHex(Math.round(a * 255))}`;
+          const rgb = a >= 0.999 ? `rgb(${r}, ${g}, ${b})` : `rgba(${r}, ${g}, ${b}, ${parseFloat(a.toFixed(2))})`;
+          return { hex, rgb, alpha: a };
+        }
+
+        // #rgb, #rgba, #rrggbb, #rrggbbaa
+        const hexMatch = s.match(/^#([0-9a-f]{3,8})$/i);
+        if (hexMatch && hexMatch[1]) {
+          const h = hexMatch[1];
+          let r = 0, g = 0, b = 0, a = 1;
+          if (h.length === 3 || h.length === 4) {
+            r = parseInt((h[0] || '0') + (h[0] || '0'), 16);
+            g = parseInt((h[1] || '0') + (h[1] || '0'), 16);
+            b = parseInt((h[2] || '0') + (h[2] || '0'), 16);
+            a = h.length === 4 ? parseInt((h[3] || '0') + (h[3] || '0'), 16) / 255 : 1;
+          } else if (h.length === 6 || h.length === 8) {
+            r = parseInt(h.substring(0, 2), 16);
+            g = parseInt(h.substring(2, 4), 16);
+            b = parseInt(h.substring(4, 6), 16);
+            a = h.length === 8 ? parseInt(h.substring(6, 8), 16) / 255 : 1;
+          }
+          if (a <= 0.001) return null;
+          const toHex = (n: number) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, '0').toUpperCase();
+          const hex = a >= 0.999 ? `#${toHex(r)}${toHex(g)}${toHex(b)}` : `#${toHex(r)}${toHex(g)}${toHex(b)}${toHex(Math.round(a * 255))}`;
+          const rgb = a >= 0.999 ? `rgb(${r}, ${g}, ${b})` : `rgba(${r}, ${g}, ${b}, ${parseFloat(a.toFixed(2))})`;
+          return { hex, rgb, alpha: a };
+        }
+
+        return null;
+      }
+
+      function addColor(rawColor: string, role: string) {
+        const parsed = parseColor(rawColor);
+        if (!parsed) return;
+        const key = parsed.hex.toLowerCase();
+        if (!colorMap.has(key)) {
+          colorMap.set(key, {
+            hex: parsed.hex,
+            rgb: parsed.rgb,
+            alpha: parsed.alpha,
+            roles: new Set([role])
+          });
+        } else {
+          colorMap.get(key)!.roles.add(role);
+        }
+      }
+
+      function extractElementColors(target: HTMLElement | SVGElement, isRoot: boolean) {
+        try {
+          const style = window.getComputedStyle(target);
+
+          // 1. Text color
+          const textColor = style.getPropertyValue('color');
+          if (textColor) {
+            addColor(textColor, isRoot ? 'Text' : 'Child Text');
+          }
+
+          // 2. Background color
+          const bgColor = style.getPropertyValue('background-color');
+          if (bgColor && bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent') {
+            addColor(bgColor, isRoot ? 'Background' : 'Child Background');
+          }
+
+          // 3. Gradients inside background-image
+          const bgImg = style.getPropertyValue('background-image');
+          if (bgImg && bgImg !== 'none') {
+            const gradientColors = bgImg.match(/rgba?\([^)]+\)|#[0-9a-f]{3,8}/gi);
+            if (gradientColors) {
+              gradientColors.forEach(c => addColor(c, isRoot ? 'Gradient' : 'Child Gradient'));
+            }
+          }
+
+          // 4. Border colors (only if border has non-zero width and border-style is not none)
+          const sides = ['top', 'right', 'bottom', 'left'] as const;
+          for (const side of sides) {
+            const bWidth = parseFloat(style.getPropertyValue(`border-${side}-width`)) || 0;
+            const bStyle = style.getPropertyValue(`border-${side}-style`);
+            if (bWidth > 0 && bStyle !== 'none' && bStyle !== 'hidden') {
+              const bColor = style.getPropertyValue(`border-${side}-color`);
+              if (bColor) {
+                addColor(bColor, isRoot ? 'Border' : 'Child Border');
               }
+            }
+          }
+
+          // 5. Outline
+          const outlineWidth = parseFloat(style.getPropertyValue('outline-width')) || 0;
+          const outlineStyle = style.getPropertyValue('outline-style');
+          if (outlineWidth > 0 && outlineStyle !== 'none' && outlineStyle !== 'hidden') {
+            const oColor = style.getPropertyValue('outline-color');
+            if (oColor) addColor(oColor, 'Outline');
+          }
+
+          // 6. Box shadow
+          const shadow = style.getPropertyValue('box-shadow');
+          if (shadow && shadow !== 'none') {
+            const shadowColors = shadow.match(/rgba?\([^)]+\)|#[0-9a-f]{3,8}/gi);
+            if (shadowColors) {
+              shadowColors.forEach(c => addColor(c, isRoot ? 'Shadow' : 'Child Shadow'));
+            }
+          }
+
+          // 7. SVG Fill & Stroke
+          if (target instanceof SVGElement || target.tagName.toLowerCase() === 'svg') {
+            const fill = style.getPropertyValue('fill');
+            if (fill && fill !== 'none' && fill !== 'transparent') {
+              addColor(fill, 'SVG Fill');
+            }
+            const stroke = style.getPropertyValue('stroke');
+            if (stroke && stroke !== 'none' && stroke !== 'transparent') {
+              addColor(stroke, 'SVG Stroke');
+            }
+          }
+        } catch (e) {}
+      }
+
+      function extractPseudoColors(target: HTMLElement, pseudo: string, roleBadge: string) {
+        try {
+          const comp = window.getComputedStyle(target, pseudo);
+          const content = comp.getPropertyValue('content');
+          if (!content || content === 'none' || content === 'normal') {
+            return;
+          }
+
+          const color = comp.getPropertyValue('color');
+          if (color) addColor(color, `${roleBadge}`);
+
+          const bg = comp.getPropertyValue('background-color');
+          if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') {
+            addColor(bg, `${roleBadge} (Bg)`);
+          }
+
+          const bgImg = comp.getPropertyValue('background-image');
+          if (bgImg && bgImg !== 'none') {
+            const gradientColors = bgImg.match(/rgba?\([^)]+\)|#[0-9a-f]{3,8}/gi);
+            if (gradientColors) {
+              gradientColors.forEach(c => addColor(c, `${roleBadge} (Gradient)`));
+            }
+          }
+
+          const bWidth = parseFloat(comp.getPropertyValue('border-top-width')) || 0;
+          const bStyle = comp.getPropertyValue('border-top-style');
+          if (bWidth > 0 && bStyle !== 'none' && bStyle !== 'hidden') {
+            const bColor = comp.getPropertyValue('border-top-color');
+            if (bColor) addColor(bColor, `${roleBadge} (Border)`);
+          }
+
+          const shadow = comp.getPropertyValue('box-shadow');
+          if (shadow && shadow !== 'none') {
+            const shadowColors = shadow.match(/rgba?\([^)]+\)|#[0-9a-f]{3,8}/gi);
+            if (shadowColors) {
+              shadowColors.forEach(c => addColor(c, `${roleBadge} (Shadow)`));
+            }
+          }
+        } catch (e) {}
+      }
+
+      // Extract from root element
+      extractElementColors(el, true);
+
+      // Extract from all detected pseudo-elements on the element
+      for (const [key, pe] of Object.entries(pseudoElements)) {
+        if (pe && (pe.exists || pe.matchedRules.length > 0)) {
+          const pseudoName = key.startsWith(':') ? key : `::${key}`;
+          extractPseudoColors(el, pseudoName, pseudoName);
+        }
+      }
+
+      // Extract from child elements (limiting to first 50 to maintain high performance)
+      try {
+        const children = Array.from(el.querySelectorAll('*')).slice(0, 50);
+        for (const child of children) {
+          if (child instanceof HTMLElement || child instanceof SVGElement) {
+            extractElementColors(child, false);
+            // Also check ::before / ::after on children if relevant
+            if (child instanceof HTMLElement) {
+              extractPseudoColors(child, '::before', 'Child ::before');
+              extractPseudoColors(child, '::after', 'Child ::after');
             }
           }
         }
       } catch (e) {}
-      const colorPalette = Array.from(colorPaletteSet);
+
+      const colors = Array.from(colorMap.values()).map(item => ({
+        hex: item.hex,
+        rgb: item.rgb,
+        alpha: item.alpha,
+        roles: Array.from(item.roles)
+      }));
+
+      const colorPalette = colors.map(c => c.hex);
 
       return {
         tagName,
@@ -759,15 +1302,19 @@ export default defineContentScript({
         classes,
         attributes,
         outerHTML,
+        sandboxHTML,
+        shadowStyles,
         inlineStyles: el.style.cssText,
         computedStyles,
         matchedRules,
         pseudoRules,
         descendantRules,
+        pseudoElements,
         frameworkEvents,
         a11yData,
         typographyData,
         animationData,
+        colors,
         colorPalette
       };
     }

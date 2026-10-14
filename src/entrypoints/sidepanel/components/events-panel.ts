@@ -250,7 +250,8 @@ function deriveVariableName(method: string, argument: string): string {
 
   // Convert to camelCase
   const parts = name.split(/\s+/);
-  name = parts[0].toLowerCase() +
+  const first = parts[0] || '';
+  name = first.toLowerCase() +
     parts.slice(1).map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join('');
 
   // Pluralise for collection-returning methods
@@ -291,7 +292,7 @@ function describeManipulation(api: string, detail: string): string {
   switch (api) {
     case 'setAttribute': {
       const match = detail.match(/^(.+?)="(.*)"$/);
-      if (match) {
+      if (match && match[1] !== undefined && match[2] !== undefined) {
         return `Set the <code>${escapeHtml(match[1])}</code> attribute to <code>"${escapeHtml(match[2])}"</code>`;
       }
       return `Set attribute: <code>${escapeHtml(detail)}</code>`;
@@ -310,8 +311,8 @@ function describeManipulation(api: string, detail: string): string {
     }
     case 'classList.toggle': {
       const parts = detail.split(',').map(p => p.trim());
-      const className = parts[0];
-      if (parts.length > 1) {
+      const className = parts[0] || '';
+      if (parts.length > 1 && parts[1] !== undefined) {
         return `Toggled CSS class <code>"${escapeHtml(className)}"</code> (force: ${escapeHtml(parts[1])})`;
       }
       return `Toggled CSS class <code>"${escapeHtml(className)}"</code> on/off`;

@@ -91,6 +91,20 @@ export interface AnimationData {
   };
 }
 
+export interface ColorInfo {
+  hex: string;
+  rgb: string;
+  alpha: number;
+  roles: string[];
+}
+
+export interface PseudoElementInfo {
+  exists: boolean;
+  content: string;
+  computedStyles: Record<string, string>;
+  matchedRules: { selector: string; cssText: string; media?: string }[];
+}
+
 export interface ElementData {
   tagName: string;
   id: string;
@@ -100,13 +114,27 @@ export interface ElementData {
   inlineStyles: string;
   computedStyles: Record<string, string>;
   matchedRules: { selector: string; cssText: string; media?: string }[];
-  pseudoRules: { selector: string; cssText: string; pseudoClass: string; media?: string }[];
+  pseudoRules: { selector: string; cssText: string; pseudoClass: string; media?: string; pseudoElement?: string; isMatching?: boolean }[];
   descendantRules?: { selector: string; cssText: string; media?: string }[];
-  /** New comprehensive JavaScript data */
+  pseudoElements?: {
+    before?: PseudoElementInfo;
+    after?: PseudoElementInfo;
+    marker?: PseudoElementInfo;
+    placeholder?: PseudoElementInfo;
+    [key: string]: PseudoElementInfo | undefined;
+  };
+  /** Clean HTML prepared for sandbox export (unpacks shadow root) */
+  sandboxHTML?: string;
+  /** Styles extracted from shadow root <style> tags */
+  shadowStyles?: string[];
+  /** Comprehensive JavaScript data */
   jsData?: JsData;
   a11yData?: A11yData;
   typographyData?: TypographyData;
   animationData?: AnimationData;
+  /** Rich color palette with roles, HEX, and RGB */
+  colors?: ColorInfo[];
+  /** Legacy flat color palette */
   colorPalette?: string[];
   // Legacy fields kept for transition
   listeners?: any[];
